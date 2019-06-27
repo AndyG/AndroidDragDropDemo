@@ -3,9 +3,10 @@ package com.discord.androiddragdropdemo
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
-class DragDropAdapter
+class DragDropAdapter(private val layoutManager: LinearLayoutManager)
     : RecyclerView.Adapter<RecyclerView.ViewHolder>(), DragAndDropTouchCallback.Adapter {
 
     private var curDragFromPos: Int? = null
@@ -124,7 +125,7 @@ class DragDropAdapter
             false)
 
         return when (viewType) {
-            VIEW_TYPE_NUMBER -> NumberItemViewHolder(view)
+            VIEW_TYPE_NUMBER -> NumberItemViewHolder(view, layoutManager)
             VIEW_TYPE_SUM -> SumItemViewHolder(view)
             else -> throw IllegalStateException("invalid view type: $viewType")
         }

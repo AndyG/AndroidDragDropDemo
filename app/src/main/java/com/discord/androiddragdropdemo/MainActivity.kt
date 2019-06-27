@@ -33,10 +33,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureRecyclerView() {
-        this.adapter = DragDropAdapter()
+        val lm = LinearLayoutManager(recyclerView.context, RecyclerView.VERTICAL, false)
+        this.adapter = DragDropAdapter(lm)
         adapter.setHasStableIds(true)
         recyclerView.adapter = this.adapter
-        recyclerView.layoutManager = LinearLayoutManager(recyclerView.context, RecyclerView.VERTICAL, false)
+        recyclerView.layoutManager = lm
         this.adapter.setItems(generateData())
 
         val itemTouchHelper = ItemTouchHelper(DragAndDropTouchCallback(adapter))
