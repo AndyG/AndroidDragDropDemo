@@ -192,18 +192,29 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
         curX: Int,
         curY: Int
     ): RecyclerView.ViewHolder? {
+        if (dropTargets.isEmpty()) {
+            curComputedDropOperation = null
+            return null
+        }
+
         selected as NumberItemViewHolder
         Log.d("calculating", "numDropTargets: ${dropTargets.size}")
         var isDraggingOverOtherNumber = false
 
-        val sumTarget = dropTargets.firstOrNull { it is SumItemViewHolder } as? SumItemViewHolder
-        if (sumTarget != null) {
-            val targetPos = sumTarget.adapterPosition
+        val closestTarget = dropTargets
+            .sortedBy { target ->
+                val targetCenterY = target.itemView.top + (target.itemView.height / 2)
+                Math.abs(selected.getCenterY() - targetCenterY)
+            }
+            .first()
+
+        if (closestTarget is SumItemViewHolder) {
+            val targetPos = closestTarget.adapterPosition
             val targetSum = (items[targetPos] as DragAndDropSumItem).curSum
 
-            val isMovingUp = selected.adapterPosition > sumTarget.adapterPosition
+            val isMovingUp = selected.adapterPosition > closestTarget.adapterPosition
             val otherCenter = selected.getCenterY()
-            val operation = sumTarget.getDragAndDropOperation(isMovingUp, otherCenter)
+            val operation = closestTarget.getDragAndDropOperation(isMovingUp, otherCenter)
 
             curComputedDropOperation = operation
             isDraggingOverOtherNumber = (operation is DragAndDropOperation.AddToSum)
@@ -213,16 +224,12 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
                 } else {
                     selected.configureWithSum(null)
                 }
-                return sumTarget
+                return closestTarget
             } else {
                 selected.configureWithSum(null)
                 return null
             }
-        } else if (dropTargets.size >= 1) {
-            val closestTarget = dropTargets
-                .sortedBy { Math.abs(selected.adapterPosition - it.adapterPosition) }
-                .first() as NumberItemViewHolder
-
+        } else if (closestTarget is NumberItemViewHolder) {
             val isMovingUp = selected.adapterPosition > closestTarget.adapterPosition
             val otherCenter = selected.getCenterY()
             val operation = closestTarget.getDragAndDropOperation(isMovingUp, otherCenter)
@@ -230,11 +237,6 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
                 selected.configureWithSum(otherNumber = closestTarget.data?.number)
                 isDraggingOverOtherNumber = true
             }
-            Log.d("calculating",
-                    "\nisMovingUp: $isMovingUp" +
-                    "\n${selected.adapterPosition}" +
-                    "\n${closestTarget.adapterPosition}" +
-                    "\nshouldSwap: $operation")
 
             curComputedDropOperation = operation
             if (operation != null) {
