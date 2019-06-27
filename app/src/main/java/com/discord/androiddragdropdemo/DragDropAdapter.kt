@@ -13,10 +13,15 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
     private var curDragToPos: Int? = null
     private var curTargetedItemPos: Int? = null
 
+    private var curComputedDropOperation : DragAndDropOperation? = null
+
     private var draggingViewHolder: NumberItemViewHolder? = null
+
+    private var items: MutableList<Any> = ArrayList()
 
     override fun onDragStarted(viewHolder: RecyclerView.ViewHolder?) {
         Log.d("findme", "onDragStarted")
+        curComputedDropOperation = null
         draggingViewHolder = viewHolder as NumberItemViewHolder
     }
 
@@ -25,20 +30,22 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
         source: RecyclerView.ViewHolder,
         target: RecyclerView.ViewHolder
     ): Boolean {
+        // use curComputedDndOperation to decide what to do?
         val fromPos = source.adapterPosition
         val toPos = target.adapterPosition
 
         curDragFromPos = fromPos
         curDragToPos = toPos
 
-        if (target is NumberItemViewHolder) {
+        if (target is NumberItemViewHolder && curComputedDropOperation is DragAndDropOperation.Move) {
             untargetCurrentlyTargetedItem()
             swapItems(fromPos, toPos)
+            return true
         } else if (target is SumItemViewHolder) {
-            untargetCurrentlyTargetedItem()
-            targetItem(toPos)
+//            untargetCurrentlyTargetedItem()
+//            targetItem(toPos)
         }
-        return true
+        return false
     }
 
     private fun targetItem(pos: Int) {
@@ -61,35 +68,33 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
     }
 
     override fun onDrop() {
-        val droppedViewHolder = draggingViewHolder ?: return
-        this.draggingViewHolder = null
-        val curDragFromPos = curDragFromPos ?: return
-        val curDragToPos = curDragToPos ?: return
-
-        untargetCurrentlyTargetedItem()
-
-        Log.d("findme", "onDrop")
-
-        val curDragItem = items[curDragFromPos] as DragAndDropNumberItem
-        val curTargetItem = items[curDragToPos] as? DragAndDropSumItem ?: return //no-op if not a sum
-
-        droppedViewHolder.onDroppedOverSum()
-        this.draggingViewHolder = null
-
-        items.removeAt(curDragFromPos)
-        notifyItemRemoved(curDragFromPos)
-
-        this.curDragFromPos = null
-        this.curDragToPos = null
-
-        val wasDraggingDown = curDragToPos > curDragFromPos
-        val adjustedDropPos = if (wasDraggingDown) curDragToPos - 1 else curDragToPos
-
-        items[adjustedDropPos] = curTargetItem.copy(curSum = curTargetItem.curSum + curDragItem.number)
-        notifyItemChanged(curDragToPos - 1)
+//        val droppedViewHolder = draggingViewHolder ?: return
+//        this.draggingViewHolder = null
+//        val curDragFromPos = curDragFromPos ?: return
+//        val curDragToPos = curDragToPos ?: return
+//
+//        untargetCurrentlyTargetedItem()
+//
+//        Log.d("findme", "onDrop")
+//
+//        val curDragItem = items[curDragFromPos] as DragAndDropNumberItem
+//        val curTargetItem = items[curDragToPos] as? DragAndDropSumItem ?: return //no-op if not a sum
+//
+//        droppedViewHolder.onDroppedOverSum()
+//        this.draggingViewHolder = null
+//
+//        items.removeAt(curDragFromPos)
+//        notifyItemRemoved(curDragFromPos)
+//
+//        this.curDragFromPos = null
+//        this.curDragToPos = null
+//
+//        val wasDraggingDown = curDragToPos > curDragFromPos
+//        val adjustedDropPos = if (wasDraggingDown) curDragToPos - 1 else curDragToPos
+//
+//        items[adjustedDropPos] = curTargetItem.copy(curSum = curTargetItem.curSum + curDragItem.number)
+//        notifyItemChanged(curDragToPos - 1)
     }
-
-    private var items: MutableList<Any> = ArrayList()
 
     fun setItems(items: List<Any>) {
         this.items = items.toMutableList()
@@ -162,14 +167,56 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
         }
     }
 
-    override fun getOverridenDropTarget(
+    override fun chooseDropTarget(
         selected: RecyclerView.ViewHolder,
         dropTargets: MutableList<RecyclerView.ViewHolder>,
         curX: Int,
         curY: Int
     ): RecyclerView.ViewHolder? {
-        Log.d("findme", "dropTargets size: ${dropTargets.size}. curY: $curY")
-        return dropTargets.firstOrNull { it is SumItemViewHolder }
+        Log.d("calculating", "numDropTargets: ${dropTargets.size}")
+
+        val sumTarget = dropTargets.firstOrNull { it is SumItemViewHolder } as? SumItemViewHolder
+        if (sumTarget != null) {
+            curComputedDropOperation = DragAndDropOperation.AddToSum
+            return sumTarget
+        } else if (dropTargets.size >= 1) {
+            val closestTarget = dropTargets
+                .sortedBy { Math.abs(selected.adapterPosition - it.adapterPosition) }
+                .first() as NumberItemViewHolder
+
+            val isMovingUp = selected.adapterPosition > closestTarget.adapterPosition
+            val otherCenter = (selected as NumberItemViewHolder).getCenterY()
+            val shouldSwap = closestTarget.shouldSwap(isMovingUp, otherCenter)
+            Log.d("calculating",
+                    "\nisMovingUp: $isMovingUp" +
+                    "\n${selected.adapterPosition}" +
+                    "\n${closestTarget.adapterPosition}" +
+                    "\nshouldSwap: $shouldSwap")
+
+            if (shouldSwap) {
+                curComputedDropOperation = DragAndDropOperation.Move
+                return dropTargets.first()
+            } else {
+                return null
+            }
+        } else {
+            Log.w("findme", "had a fall through case. dropTargets: $dropTargets")
+        }
+        return null
+    }
+
+    override fun onDropTargetSelected(viewHolder: RecyclerView.ViewHolder?,
+                                      curY: Int) {
+        Log.d("findme", "onDropTargetSelected: $curY")
+        if (viewHolder is NumberItemViewHolder) {
+            viewHolder.onHoveredOver(curY)
+        }
+    }
+
+    sealed class DragAndDropOperation {
+        object Move : DragAndDropOperation()
+        object AddToSum : DragAndDropOperation()
+        object CreateSum : DragAndDropOperation()
     }
 
     companion object {

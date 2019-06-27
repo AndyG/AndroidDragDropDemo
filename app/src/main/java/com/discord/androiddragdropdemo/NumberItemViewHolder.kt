@@ -16,6 +16,8 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
     private var animation: Animation? = null
     private var didShrinkSinceLastConfigure: Boolean = false
 
+    var data: DragAndDropNumberItem? = null
+
     override fun onDragStateChanged(dragging: Boolean) {
         // no op
     }
@@ -27,6 +29,8 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
     private val textView: TextView = view.findViewById(R.id.draggable_view_text)
 
     fun configure(dragAndDropNumberItem: DragAndDropNumberItem) {
+        this.data = dragAndDropNumberItem
+
         this.itemView.visibility = View.VISIBLE
         animation?.cancel()
         animation = null
@@ -34,22 +38,9 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
 
         val text = "Item number: ${dragAndDropNumberItem.number}"
         this.textView.text = text
-
-        this.itemView.setOnClickListener {
-            onItemViewClicked()
-        }
     }
 
-    fun onDroppedOverSum() {
-        Log.d("findme", "onDroppedOverSum")
-        this.itemView.visibility = View.GONE
-    }
-
-    fun onItemViewClicked() {
-        onHoveredOver()
-    }
-
-    fun onHoveredOver() {
+    fun onHoveredOver(yDragPos: Int) {
         computeBoundingBox()
         val height = transformedBoundingBoxRect.height()
 
@@ -71,10 +62,38 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
         Log.d("findme", "top range: $topRange")
         Log.d("findme", "middle range: $middleRange")
         Log.d("findme", "bottom range: $bottomRange")
+
+        val isInMiddle = yDragPos in middleRange
+        Log.d("findme", "isInMiddle: $isInMiddle")
+        if (isInMiddle) {
+            textView.text = "drrrrrrrrrrrrrr"
+        } else {
+            val text = "Item number: ${data?.number}"
+            this.textView.text = text
+        }
     }
 
     private fun computeBoundingBox() {
         layoutManager.getTransformedBoundingBox(this.itemView, false, transformedBoundingBoxRect)
+    }
+
+    fun shouldSwap(isMovingUp: Boolean, curY: Int): Boolean {
+        computeBoundingBox()
+        val centerY = transformedBoundingBoxRect.centerY()
+        if (isMovingUp && curY < centerY) {
+            // moving up and we've moved above the center
+            return true
+        } else if (!isMovingUp && curY > centerY) {
+            // moving down and we've moved below the center
+            return true
+        }
+
+        return false
+    }
+
+    fun getCenterY(): Int {
+        computeBoundingBox()
+        return transformedBoundingBoxRect.centerY()
     }
 
     companion object {

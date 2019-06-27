@@ -69,11 +69,9 @@ class DragAndDropTouchCallback @JvmOverloads constructor(
         curX: Int,
         curY: Int
     ): RecyclerView.ViewHolder? {
-        val adapterOverride = adapter.getOverridenDropTarget(selected, dropTargets, curX, curY)
-        return when {
-            adapterOverride != null -> adapterOverride
-            else -> super.chooseDropTarget(selected, dropTargets, curX, curY)
-        }
+        return adapter.chooseDropTarget(
+            selected, dropTargets, curX, curY
+        )
     }
 
     override fun getMoveThreshold(viewHolder: RecyclerView.ViewHolder): Float {
@@ -90,12 +88,13 @@ class DragAndDropTouchCallback @JvmOverloads constructor(
         fun onDragStarted(viewHolder: RecyclerView.ViewHolder?)
         fun onDrop()
         fun onMoveTargeted(recyclerView: RecyclerView, source: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean
-        fun getOverridenDropTarget(
+        fun chooseDropTarget(
             selected: RecyclerView.ViewHolder,
             dropTargets: MutableList<RecyclerView.ViewHolder>,
             curX: Int,
             curY: Int
         ): RecyclerView.ViewHolder?
+        fun onDropTargetSelected(viewHolder: RecyclerView.ViewHolder?, curY: Int)
     }
 
     interface DraggableViewHolder {
