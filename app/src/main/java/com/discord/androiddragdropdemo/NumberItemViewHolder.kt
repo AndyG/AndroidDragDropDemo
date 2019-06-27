@@ -118,6 +118,16 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
         this.itemView.visibility = View.GONE
     }
 
+    fun configureWithSum(otherNumber: Int?) {
+        if (otherNumber != null) {
+            val text = "Item number: ${data?.number} + $otherNumber"
+            this.textView.text = text
+        } else {
+            val text = "Item number: ${data?.number}"
+            this.textView.text = text
+        }
+    }
+
     companion object {
         private const val middlePercentage = 0.25
     }

@@ -190,11 +190,16 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
         curX: Int,
         curY: Int
     ): RecyclerView.ViewHolder? {
+        selected as NumberItemViewHolder
         Log.d("calculating", "numDropTargets: ${dropTargets.size}")
+        var isDraggingOverOtherNumber = false
 
         val sumTarget = dropTargets.firstOrNull { it is SumItemViewHolder } as? SumItemViewHolder
         if (sumTarget != null) {
             curComputedDropOperation = DragAndDropOperation.AddToSum
+            val targetPos = sumTarget.adapterPosition
+            val targetSum = (items[targetPos] as DragAndDropSumItem).curSum
+            selected.configureWithSum(otherNumber = targetSum)
             return sumTarget
         } else if (dropTargets.size >= 1) {
             val closestTarget = dropTargets
@@ -202,8 +207,12 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
                 .first() as NumberItemViewHolder
 
             val isMovingUp = selected.adapterPosition > closestTarget.adapterPosition
-            val otherCenter = (selected as NumberItemViewHolder).getCenterY()
+            val otherCenter = selected.getCenterY()
             val operation = closestTarget.getDragAndDropOperation(isMovingUp, otherCenter)
+            if (operation is DragAndDropOperation.CreateSum) {
+                selected.configureWithSum(otherNumber = closestTarget.data?.number)
+                isDraggingOverOtherNumber = true
+            }
             Log.d("calculating",
                     "\nisMovingUp: $isMovingUp" +
                     "\n${selected.adapterPosition}" +
@@ -212,13 +221,19 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
 
             if (operation != null) {
                 curComputedDropOperation = operation
+                if (!isDraggingOverOtherNumber) {
+                    selected.configureWithSum(null)
+                }
                 return dropTargets.first()
             } else {
+                selected.configureWithSum(null)
                 return null
             }
         } else {
             Log.w("findme", "had a fall through case. dropTargets: $dropTargets")
         }
+
+        selected.configureWithSum(null)
         return null
     }
 
