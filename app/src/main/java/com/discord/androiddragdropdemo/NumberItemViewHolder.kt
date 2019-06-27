@@ -3,7 +3,6 @@ package com.discord.androiddragdropdemo
 import android.graphics.Rect
 import android.util.Log
 import android.view.View
-import android.view.animation.Animation
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -12,9 +11,6 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
     : RecyclerView.ViewHolder(view), DragAndDropTouchCallback.DraggableViewHolder {
 
     private val transformedBoundingBoxRect = Rect()
-
-    private var animation: Animation? = null
-    private var didShrinkSinceLastConfigure: Boolean = false
 
     var data: DragAndDropNumberItem? = null
 
@@ -32,9 +28,6 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
         this.data = dragAndDropNumberItem
 
         this.itemView.visibility = View.VISIBLE
-        animation?.cancel()
-        animation = null
-        didShrinkSinceLastConfigure = false
 
         val text = "Item number: ${dragAndDropNumberItem.number}"
         this.textView.text = text
@@ -79,16 +72,39 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
 
     fun shouldSwap(isMovingUp: Boolean, curY: Int): Boolean {
         computeBoundingBox()
-        val centerY = transformedBoundingBoxRect.centerY()
-        if (isMovingUp && curY < centerY) {
-            // moving up and we've moved above the center
-            return true
-        } else if (!isMovingUp && curY > centerY) {
-            // moving down and we've moved below the center
-            return true
-        }
+        val height = transformedBoundingBoxRect.height()
 
-        return false
+        val nonMiddlePercent = 1 - middlePercentage
+        val halfNonMiddlePercent = nonMiddlePercent / 2
+
+        val outerSize = height * halfNonMiddlePercent
+
+        val topOfTopRange = (transformedBoundingBoxRect.top)
+        val bottomOfTopRange = (topOfTopRange + outerSize).toInt()
+        val topRange = topOfTopRange..bottomOfTopRange
+
+        val bottomOfBottomRange = transformedBoundingBoxRect.bottom
+        val topOfBottomRange = (bottomOfBottomRange - outerSize).toInt()
+        val bottomRange = topOfBottomRange..bottomOfBottomRange
+
+        val middleRange = bottomOfTopRange..topOfBottomRange
+
+        Log.d("findme", "top range: $topRange")
+        Log.d("findme", "middle range: $middleRange")
+        Log.d("findme", "bottom range: $bottomRange")
+
+        val isInMiddle = curY in middleRange
+
+        Log.d("findme", "isInMiddle: $isInMiddle")
+
+        if (isMovingUp && curY in topRange) {
+            return true
+        } else if (!isMovingUp && curY in bottomRange) {
+            return true
+        } else {
+            Log.d("findme", "hovering over middle")
+            return false
+        }
     }
 
     fun getCenterY(): Int {
