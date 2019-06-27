@@ -70,7 +70,7 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
         layoutManager.getTransformedBoundingBox(this.itemView, false, transformedBoundingBoxRect)
     }
 
-    fun shouldSwap(isMovingUp: Boolean, curY: Int): Boolean {
+    fun getDragAndDropOperation(isMovingUp: Boolean, curY: Int): DragDropAdapter.DragAndDropOperation? {
         computeBoundingBox()
         val height = transformedBoundingBoxRect.height()
 
@@ -97,13 +97,14 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
 
         Log.d("findme", "isInMiddle: $isInMiddle")
 
-        if (isMovingUp && curY in topRange) {
-            return true
+        return if (curY in middleRange) {
+            DragDropAdapter.DragAndDropOperation.CreateSum
+        } else if (isMovingUp && curY in topRange) {
+            DragDropAdapter.DragAndDropOperation.Move
         } else if (!isMovingUp && curY in bottomRange) {
-            return true
+            DragDropAdapter.DragAndDropOperation.Move
         } else {
-            Log.d("findme", "hovering over middle")
-            return false
+            null
         }
     }
 

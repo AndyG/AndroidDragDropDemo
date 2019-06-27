@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlin.random.Random
 
 class DragDropAdapter(private val layoutManager: LinearLayoutManager)
     : RecyclerView.Adapter<RecyclerView.ViewHolder>(), DragAndDropTouchCallback.Adapter {
@@ -73,7 +74,8 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
         val operation = curComputedDropOperation ?: return
         curComputedDropOperation = null
 
-        if (operation !is DragAndDropOperation.AddToSum) {
+        if (operation !is DragAndDropOperation.AddToSum
+            && operation !is DragAndDropOperation.CreateSum) {
             return
         }
 
@@ -83,7 +85,7 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
         untargetCurrentlyTargetedItem()
 
         val curDragItem = items[curDragFromPos] as DragAndDropNumberItem
-        val curTargetItem = items[curDragToPos] as? DragAndDropSumItem ?: return //no-op if not a sum
+        val curTargetItem = items[curDragToPos]
 
         droppedViewHolder.onDroppedOverSum()
         this.draggingViewHolder = null
@@ -97,7 +99,17 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
         val wasDraggingDown = curDragToPos > curDragFromPos
         val adjustedDropPos = if (wasDraggingDown) curDragToPos - 1 else curDragToPos
 
-        items[adjustedDropPos] = curTargetItem.copy(curSum = curTargetItem.curSum + curDragItem.number)
+        val newItem: DragAndDropSumItem = when (curTargetItem) {
+            is DragAndDropNumberItem -> {
+                DragAndDropSumItem(curSum = curTargetItem.number + curDragItem.number, isTargeted = false, id = Random.nextLong())
+            }
+            is DragAndDropSumItem -> {
+                curTargetItem.copy(curSum = curTargetItem.curSum + curDragItem.number)
+            }
+            else -> throw IllegalStateException("what")
+        }
+
+        items[adjustedDropPos] = newItem
         notifyItemChanged(curDragToPos - 1)
     }
 
@@ -191,15 +203,15 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
 
             val isMovingUp = selected.adapterPosition > closestTarget.adapterPosition
             val otherCenter = (selected as NumberItemViewHolder).getCenterY()
-            val shouldSwap = closestTarget.shouldSwap(isMovingUp, otherCenter)
+            val operation = closestTarget.getDragAndDropOperation(isMovingUp, otherCenter)
             Log.d("calculating",
                     "\nisMovingUp: $isMovingUp" +
                     "\n${selected.adapterPosition}" +
                     "\n${closestTarget.adapterPosition}" +
-                    "\nshouldSwap: $shouldSwap")
+                    "\nshouldSwap: $operation")
 
-            if (shouldSwap) {
-                curComputedDropOperation = DragAndDropOperation.Move
+            if (operation != null) {
+                curComputedDropOperation = operation
                 return dropTargets.first()
             } else {
                 return null
