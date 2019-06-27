@@ -20,7 +20,6 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
     private var items: MutableList<Any> = ArrayList()
 
     override fun onDragStarted(viewHolder: RecyclerView.ViewHolder?) {
-        Log.d("findme", "onDragStarted")
         curComputedDropOperation = null
         draggingViewHolder = viewHolder as NumberItemViewHolder
     }
@@ -30,20 +29,21 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
         source: RecyclerView.ViewHolder,
         target: RecyclerView.ViewHolder
     ): Boolean {
-        // use curComputedDndOperation to decide what to do?
         val fromPos = source.adapterPosition
         val toPos = target.adapterPosition
 
         curDragFromPos = fromPos
         curDragToPos = toPos
 
-        if (target is NumberItemViewHolder && curComputedDropOperation is DragAndDropOperation.Move) {
+        if (target is NumberItemViewHolder
+            && curComputedDropOperation is DragAndDropOperation.Move) {
             untargetCurrentlyTargetedItem()
             swapItems(fromPos, toPos)
             return true
-        } else if (target is SumItemViewHolder) {
-//            untargetCurrentlyTargetedItem()
-//            targetItem(toPos)
+        } else if (target is SumItemViewHolder
+            && curComputedDropOperation is DragAndDropOperation.AddToSum) {
+            untargetCurrentlyTargetedItem()
+            targetItem(toPos)
         }
         return false
     }
@@ -68,32 +68,37 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
     }
 
     override fun onDrop() {
-//        val droppedViewHolder = draggingViewHolder ?: return
-//        this.draggingViewHolder = null
-//        val curDragFromPos = curDragFromPos ?: return
-//        val curDragToPos = curDragToPos ?: return
-//
-//        untargetCurrentlyTargetedItem()
-//
-//        Log.d("findme", "onDrop")
-//
-//        val curDragItem = items[curDragFromPos] as DragAndDropNumberItem
-//        val curTargetItem = items[curDragToPos] as? DragAndDropSumItem ?: return //no-op if not a sum
-//
-//        droppedViewHolder.onDroppedOverSum()
-//        this.draggingViewHolder = null
-//
-//        items.removeAt(curDragFromPos)
-//        notifyItemRemoved(curDragFromPos)
-//
-//        this.curDragFromPos = null
-//        this.curDragToPos = null
-//
-//        val wasDraggingDown = curDragToPos > curDragFromPos
-//        val adjustedDropPos = if (wasDraggingDown) curDragToPos - 1 else curDragToPos
-//
-//        items[adjustedDropPos] = curTargetItem.copy(curSum = curTargetItem.curSum + curDragItem.number)
-//        notifyItemChanged(curDragToPos - 1)
+        val droppedViewHolder = draggingViewHolder ?: return
+        this.draggingViewHolder = null
+        val operation = curComputedDropOperation ?: return
+        curComputedDropOperation = null
+
+        if (operation !is DragAndDropOperation.AddToSum) {
+            return
+        }
+
+        val curDragFromPos = curDragFromPos ?: return
+        val curDragToPos = curDragToPos ?: return
+
+        untargetCurrentlyTargetedItem()
+
+        val curDragItem = items[curDragFromPos] as DragAndDropNumberItem
+        val curTargetItem = items[curDragToPos] as? DragAndDropSumItem ?: return //no-op if not a sum
+
+        droppedViewHolder.onDroppedOverSum()
+        this.draggingViewHolder = null
+
+        items.removeAt(curDragFromPos)
+        notifyItemRemoved(curDragFromPos)
+
+        this.curDragFromPos = null
+        this.curDragToPos = null
+
+        val wasDraggingDown = curDragToPos > curDragFromPos
+        val adjustedDropPos = if (wasDraggingDown) curDragToPos - 1 else curDragToPos
+
+        items[adjustedDropPos] = curTargetItem.copy(curSum = curTargetItem.curSum + curDragItem.number)
+        notifyItemChanged(curDragToPos - 1)
     }
 
     fun setItems(items: List<Any>) {

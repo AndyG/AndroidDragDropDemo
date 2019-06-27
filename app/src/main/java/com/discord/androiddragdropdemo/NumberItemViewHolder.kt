@@ -112,6 +112,11 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
         return transformedBoundingBoxRect.centerY()
     }
 
+    fun onDroppedOverSum() {
+        Log.d("findme", "onDroppedOverSum")
+        this.itemView.visibility = View.GONE
+    }
+
     companion object {
         private const val middlePercentage = 0.25
     }
