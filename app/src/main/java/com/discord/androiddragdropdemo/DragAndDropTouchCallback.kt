@@ -9,8 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
  */
 class DragAndDropTouchCallback @JvmOverloads constructor(
     private val adapter: Adapter,
-    private val dragScrollSpeed: Int = DEFAULT_DRAG_SCROLL_SPEED,
-    private val itemHeight: Float
+    private val dragScrollSpeed: Int = DEFAULT_DRAG_SCROLL_SPEED
 ) : ItemTouchHelper.Callback() {
 
     override fun isLongPressDragEnabled(): Boolean {
@@ -77,21 +76,9 @@ class DragAndDropTouchCallback @JvmOverloads constructor(
         }
     }
 
-//    override fun onChildDraw(
-//        c: Canvas,
-//        recyclerView: RecyclerView,
-//        viewHolder: RecyclerView.ViewHolder,
-//        dX: Float,
-//        dY: Float,
-//        actionState: Int,
-//        isCurrentlyActive: Boolean
-//    ) {
-//        if (isCurrentlyActive || adapter.shouldDrawRecoveringView()) {
-//            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
-//        } else {
-//            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
-//        }
-//    }
+    override fun getMoveThreshold(viewHolder: RecyclerView.ViewHolder): Float {
+        return 0.2f
+    }
 
     /**
      * Lets the adapter know when an item was moved. onDrop does not let the adapter know the position

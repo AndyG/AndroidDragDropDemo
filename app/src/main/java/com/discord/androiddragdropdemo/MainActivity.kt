@@ -39,21 +39,11 @@ class MainActivity : AppCompatActivity() {
         recyclerView.layoutManager = LinearLayoutManager(recyclerView.context, RecyclerView.VERTICAL, false)
         this.adapter.setItems(generateData())
 
-        val itemTouchHelper = ItemTouchHelper(
-            DragAndDropTouchCallback(adapter,
-            itemHeight = dpToPixels(64)))
-
+        val itemTouchHelper = ItemTouchHelper(DragAndDropTouchCallback(adapter))
         itemTouchHelper.attachToRecyclerView(recyclerView)
     }
 
     private fun bindViews() {
         this.recyclerView = findViewById(R.id.activity_main_recycler_view)
     }
-
-    private fun dpToPixels(dp: Int) =
-        TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            dp.toFloat(),
-            resources.displayMetrics
-        )
 }
