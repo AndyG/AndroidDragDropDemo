@@ -36,8 +36,7 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
         curDragFromPos = fromPos
         curDragToPos = toPos
 
-        if (target is NumberItemViewHolder
-            && curComputedDropOperation is DragAndDropOperation.Move) {
+        if (curComputedDropOperation is DragAndDropOperation.Move) {
             untargetCurrentlyTargetedItem()
             swapItems(fromPos, toPos)
             return true
@@ -151,7 +150,7 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
 
         return when (viewType) {
             VIEW_TYPE_NUMBER -> NumberItemViewHolder(view, layoutManager)
-            VIEW_TYPE_SUM -> SumItemViewHolder(view)
+            VIEW_TYPE_SUM -> SumItemViewHolder(view, layoutManager)
             else -> throw IllegalStateException("invalid view type: $viewType")
         }
     }
@@ -199,11 +198,26 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
 
         val sumTarget = dropTargets.firstOrNull { it is SumItemViewHolder } as? SumItemViewHolder
         if (sumTarget != null) {
-            curComputedDropOperation = DragAndDropOperation.AddToSum
             val targetPos = sumTarget.adapterPosition
             val targetSum = (items[targetPos] as DragAndDropSumItem).curSum
-            selected.configureWithSum(otherNumber = targetSum)
-            return sumTarget
+
+            val isMovingUp = selected.adapterPosition > sumTarget.adapterPosition
+            val otherCenter = selected.getCenterY()
+            val operation = sumTarget.getDragAndDropOperation(isMovingUp, otherCenter)
+
+            curComputedDropOperation = operation
+            isDraggingOverOtherNumber = (operation is DragAndDropOperation.AddToSum)
+            if (operation != null) {
+                if (isDraggingOverOtherNumber) {
+                    selected.configureWithSum(otherNumber = targetSum)
+                } else {
+                    selected.configureWithSum(null)
+                }
+                return sumTarget
+            } else {
+                selected.configureWithSum(null)
+                return null
+            }
         } else if (dropTargets.size >= 1) {
             val closestTarget = dropTargets
                 .sortedBy { Math.abs(selected.adapterPosition - it.adapterPosition) }
