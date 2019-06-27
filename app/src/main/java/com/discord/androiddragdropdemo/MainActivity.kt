@@ -2,10 +2,8 @@ package com.discord.androiddragdropdemo
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import kotlinx.android.synthetic.main.activity_main.*
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import androidx.recyclerview.widget.ItemTouchHelper
 
@@ -23,11 +21,22 @@ class MainActivity : AppCompatActivity() {
         configureRecyclerView()
     }
 
+    @Suppress("IMPLICIT_CAST_TO_ANY")
+    private fun generateData(): List<Any> {
+        return (1..50).map { index ->
+            if (index % 10 == 0) {
+                DragAndDropSumItem(index)
+            } else {
+                DragAndDropNumberItem(index)
+            }
+        }
+    }
+
     private fun configureRecyclerView() {
         this.adapter = DragDropAdapter()
         recyclerView.adapter = this.adapter
         recyclerView.layoutManager = LinearLayoutManager(recyclerView.context, RecyclerView.VERTICAL, false)
-        this.adapter.setItems((1..50).map { DragAndDropItem(it) })
+        this.adapter.setItems(generateData())
 
         val itemTouchHelper = ItemTouchHelper(
             object : ItemTouchHelper.SimpleCallback(
