@@ -10,7 +10,6 @@ import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import androidx.recyclerview.widget.ItemTouchHelper
 
 
-
 class MainActivity : AppCompatActivity() {
 
     private lateinit var recyclerView : RecyclerView
@@ -33,7 +32,7 @@ class MainActivity : AppCompatActivity() {
         val itemTouchHelper = ItemTouchHelper(
             object : ItemTouchHelper.SimpleCallback(
                 ItemTouchHelper.UP or ItemTouchHelper.DOWN,
-                ItemTouchHelper.LEFT
+                0
             ) {
                 override fun onMove(
                     recyclerView: RecyclerView,
@@ -42,13 +41,10 @@ class MainActivity : AppCompatActivity() {
                     val fromPos = viewHolder.adapterPosition
                     val toPos = target.adapterPosition
                     adapter.swapItems(fromPos, toPos)
-                    Log.d("findme", "fromPos: $fromPos -- toPos: $toPos")
-                    // move item in `fromPos` to `toPos` in adapter.
-                    return true// true if moved, false otherwise
+                    return true
                 }
 
                 override fun onSwiped(viewHolder: ViewHolder, direction: Int) {
-                    // remove from adapter
                 }
             })
 
