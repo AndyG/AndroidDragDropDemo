@@ -94,7 +94,6 @@ class DragAndDropTouchCallback @JvmOverloads constructor(
             curX: Int,
             curY: Int
         ): RecyclerView.ViewHolder?
-        fun onDropTargetSelected(viewHolder: RecyclerView.ViewHolder?, curY: Int)
     }
 
     interface DraggableViewHolder {

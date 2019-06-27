@@ -45,7 +45,10 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
             && curComputedDropOperation is DragAndDropOperation.AddToSum) {
             untargetCurrentlyTargetedItem()
             targetItem(toPos)
+        } else {
+            untargetCurrentlyTargetedItem()
         }
+
         return false
     }
 
@@ -235,14 +238,6 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
 
         selected.configureWithSum(null)
         return null
-    }
-
-    override fun onDropTargetSelected(viewHolder: RecyclerView.ViewHolder?,
-                                      curY: Int) {
-        Log.d("findme", "onDropTargetSelected: $curY")
-        if (viewHolder is NumberItemViewHolder) {
-            viewHolder.onHoveredOver(curY)
-        }
     }
 
     sealed class DragAndDropOperation {

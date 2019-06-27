@@ -33,39 +33,6 @@ class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutMa
         this.textView.text = text
     }
 
-    fun onHoveredOver(yDragPos: Int) {
-        computeBoundingBox()
-        val height = transformedBoundingBoxRect.height()
-
-        val nonMiddlePercent = 1 - middlePercentage
-        val halfNonMiddlePercent = nonMiddlePercent / 2
-
-        val outerSize = height * halfNonMiddlePercent
-
-        val topOfTopRange = (transformedBoundingBoxRect.top)
-        val bottomOfTopRange = (topOfTopRange + outerSize).toInt()
-        val topRange = topOfTopRange..bottomOfTopRange
-
-        val bottomOfBottomRange = transformedBoundingBoxRect.bottom
-        val topOfBottomRange = (bottomOfBottomRange - outerSize).toInt()
-        val bottomRange = topOfBottomRange..bottomOfBottomRange
-
-        val middleRange = bottomOfTopRange..topOfBottomRange
-
-        Log.d("findme", "top range: $topRange")
-        Log.d("findme", "middle range: $middleRange")
-        Log.d("findme", "bottom range: $bottomRange")
-
-        val isInMiddle = yDragPos in middleRange
-        Log.d("findme", "isInMiddle: $isInMiddle")
-        if (isInMiddle) {
-            textView.text = "drrrrrrrrrrrrrr"
-        } else {
-            val text = "Item number: ${data?.number}"
-            this.textView.text = text
-        }
-    }
-
     private fun computeBoundingBox() {
         layoutManager.getTransformedBoundingBox(this.itemView, false, transformedBoundingBoxRect)
     }
