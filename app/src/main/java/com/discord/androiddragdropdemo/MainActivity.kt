@@ -2,9 +2,9 @@ package com.discord.androiddragdropdemo
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.TypedValue
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import androidx.recyclerview.widget.ItemTouchHelper
 
 
@@ -25,37 +25,23 @@ class MainActivity : AppCompatActivity() {
     private fun generateData(): List<Any> {
         return (1..50).map { index ->
             if (index % 10 == 0) {
-                DragAndDropSumItem(index)
+                DragAndDropSumItem(index, isTargeted = false, id = index.toLong())
             } else {
-                DragAndDropNumberItem(index)
+                DragAndDropNumberItem(index, id = index.toLong())
             }
         }
     }
 
     private fun configureRecyclerView() {
         this.adapter = DragDropAdapter()
+        adapter.setHasStableIds(true)
         recyclerView.adapter = this.adapter
         recyclerView.layoutManager = LinearLayoutManager(recyclerView.context, RecyclerView.VERTICAL, false)
         this.adapter.setItems(generateData())
 
         val itemTouchHelper = ItemTouchHelper(
-            object : ItemTouchHelper.SimpleCallback(
-                ItemTouchHelper.UP or ItemTouchHelper.DOWN,
-                0
-            ) {
-                override fun onMove(
-                    recyclerView: RecyclerView,
-                    viewHolder: ViewHolder, target: ViewHolder
-                ): Boolean {
-                    val fromPos = viewHolder.adapterPosition
-                    val toPos = target.adapterPosition
-                    adapter.swapItems(fromPos, toPos)
-                    return true
-                }
-
-                override fun onSwiped(viewHolder: ViewHolder, direction: Int) {
-                }
-            })
+            DragAndDropTouchCallback(adapter,
+            itemHeight = dpToPixels(64)))
 
         itemTouchHelper.attachToRecyclerView(recyclerView)
     }
@@ -63,4 +49,11 @@ class MainActivity : AppCompatActivity() {
     private fun bindViews() {
         this.recyclerView = findViewById(R.id.activity_main_recycler_view)
     }
+
+    private fun dpToPixels(dp: Int) =
+        TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            dp.toFloat(),
+            resources.displayMetrics
+        )
 }
