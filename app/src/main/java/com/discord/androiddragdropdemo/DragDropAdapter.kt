@@ -219,8 +219,8 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
                     "\n${closestTarget.adapterPosition}" +
                     "\nshouldSwap: $operation")
 
+            curComputedDropOperation = operation
             if (operation != null) {
-                curComputedDropOperation = operation
                 if (!isDraggingOverOtherNumber) {
                     selected.configureWithSum(null)
                 }
