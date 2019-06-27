@@ -10,15 +10,13 @@ class DragDropAdapter
 
     private var curDragFromPos: Int? = null
     private var curDragToPos: Int? = null
-
     private var curTargetedItemPos: Int? = null
 
-    private var sourceViewHolder: NumberItemViewHolder? = null
+    private var draggingViewHolder: NumberItemViewHolder? = null
 
-    private var shouldDrawRecoveringView = true
-
-    override fun shouldDrawRecoveringView(): Boolean {
-        return shouldDrawRecoveringView
+    override fun onDragStarted(viewHolder: RecyclerView.ViewHolder?) {
+        Log.d("findme", "onDragStarted")
+        draggingViewHolder = viewHolder as NumberItemViewHolder
     }
 
     override fun onMoveTargeted(
@@ -26,7 +24,6 @@ class DragDropAdapter
         source: RecyclerView.ViewHolder,
         target: RecyclerView.ViewHolder
     ): Boolean {
-        sourceViewHolder = source as NumberItemViewHolder
         val fromPos = source.adapterPosition
         val toPos = target.adapterPosition
 
@@ -34,13 +31,11 @@ class DragDropAdapter
         curDragToPos = toPos
 
         if (target is NumberItemViewHolder) {
-            shouldDrawRecoveringView = true
             untargetCurrentlyTargetedItem()
             swapItems(fromPos, toPos)
         } else if (target is SumItemViewHolder) {
             untargetCurrentlyTargetedItem()
             targetItem(toPos)
-            shouldDrawRecoveringView = false
         }
         return true
     }
@@ -65,11 +60,11 @@ class DragDropAdapter
     }
 
     override fun onDrop() {
-        val sourceViewHolder = this.sourceViewHolder ?: return
+        val droppedViewHolder = draggingViewHolder ?: return
+        this.draggingViewHolder = null
         val curDragFromPos = curDragFromPos ?: return
         val curDragToPos = curDragToPos ?: return
 
-        this.sourceViewHolder = null
         untargetCurrentlyTargetedItem()
 
         Log.d("findme", "onDrop")
@@ -77,8 +72,9 @@ class DragDropAdapter
         val curDragItem = items[curDragFromPos] as DragAndDropNumberItem
         val curTargetItem = items[curDragToPos] as? DragAndDropSumItem ?: return //no-op if not a sum
 
-        shouldDrawRecoveringView = false
-//        sourceViewHolder.onDroppedIntoSum()
+        droppedViewHolder.onDroppedOverSum()
+        this.draggingViewHolder = null
+
         items.removeAt(curDragFromPos)
         notifyItemRemoved(curDragFromPos)
 
@@ -163,6 +159,16 @@ class DragDropAdapter
             items.add(newInsertionIndex, item)
             notifyItemInserted(newInsertionIndex)
         }
+    }
+
+    override fun getOverridenDropTarget(
+        selected: RecyclerView.ViewHolder,
+        dropTargets: MutableList<RecyclerView.ViewHolder>,
+        curX: Int,
+        curY: Int
+    ): RecyclerView.ViewHolder? {
+        Log.d("findme", "dropTargets size: ${dropTargets.size}. curY: $curY")
+        return dropTargets.firstOrNull { it is SumItemViewHolder }
     }
 
     companion object {

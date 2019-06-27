@@ -5,7 +5,7 @@ import android.view.View
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-class SumItemViewHolder(private val view: View) : RecyclerView.ViewHolder(view),
+class SumItemViewHolder(view: View) : RecyclerView.ViewHolder(view),
     DragAndDropTouchCallback.DraggableViewHolder {
 
         override fun onDragStateChanged(dragging: Boolean) {
@@ -16,16 +16,16 @@ class SumItemViewHolder(private val view: View) : RecyclerView.ViewHolder(view),
             return false
         }
 
-    val textView: TextView = view.findViewById(R.id.draggable_view_text)
+    private val textView: TextView = view.findViewById(R.id.draggable_view_text)
 
     fun configure(dragAndDropSumItem: DragAndDropSumItem) {
-        val text = "Current sum: ${dragAndDropSumItem.curSum}"
+        val text = "${dragAndDropSumItem.curSum}"
         this.textView.text = text
 
         if (dragAndDropSumItem.isTargeted) {
-            view.setBackgroundColor(Color.LTGRAY)
+            itemView.setBackgroundColor(Color.LTGRAY)
         } else {
-            view.setBackgroundColor(Color.TRANSPARENT)
+            itemView.setBackgroundColor(Color.WHITE)
         }
     }
 }

@@ -1,7 +1,8 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:tools="http://schemas.android.com/tools"
-              android:layout_width="match_parent"
-              android:layout_height="64dp">
+                xmlns:tools="http://schemas.android.com/tools"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:background="@android:color/white">
 
     <TextView
             android:id="@+id/draggable_view_text"
@@ -9,9 +10,9 @@
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
             android:gravity="center_vertical"
-            android:textSize="24sp"
+            android:textSize="36sp"
             android:layout_marginLeft="16dp"
-            tools:text="Item number: 1"/>
+            tools:text="50"/>
 
     <View
             android:layout_width="match_parent"

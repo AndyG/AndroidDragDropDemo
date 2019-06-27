@@ -1,6 +1,5 @@
 package com.discord.androiddragdropdemo
 
-import android.graphics.Canvas
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 
@@ -40,19 +39,16 @@ class DragAndDropTouchCallback @JvmOverloads constructor(
     override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
         if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
             // Let the view holder know that this item is being moved or dragged.
-            (viewHolder as DraggableViewHolder).onDragStateChanged(true)
+            (viewHolder as? DraggableViewHolder)?.onDragStateChanged(true)
+            adapter.onDragStarted(viewHolder)
+        } else if (actionState == ItemTouchHelper.ACTION_STATE_IDLE) {
+            // Tell the view holder to restore the idle state.
+            (viewHolder as? DraggableViewHolder)?.onDragStateChanged(false)
+
+            adapter.onDrop()
         }
 
         super.onSelectedChanged(viewHolder, actionState)
-    }
-
-    override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
-        super.clearView(recyclerView, viewHolder)
-
-        // Tell the view holder to restore the idle state.
-        (viewHolder as DraggableViewHolder).onDragStateChanged(false)
-
-        adapter.onDrop()
     }
 
     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, i: Int) {}
@@ -68,23 +64,34 @@ class DragAndDropTouchCallback @JvmOverloads constructor(
         return dragScrollSpeed * direction
     }
 
-    override fun onChildDraw(
-        c: Canvas,
-        recyclerView: RecyclerView,
-        viewHolder: RecyclerView.ViewHolder,
-        dX: Float,
-        dY: Float,
-        actionState: Int,
-        isCurrentlyActive: Boolean
-    ) {
-        if (isCurrentlyActive || adapter.shouldDrawRecoveringView()) {
-            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
-        } else {
-            val isUp = dY < 0
-            (viewHolder as NumberItemViewHolder).stopRenderingContent(isUp)
-            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+    override fun chooseDropTarget(
+        selected: RecyclerView.ViewHolder,
+        dropTargets: MutableList<RecyclerView.ViewHolder>,
+        curX: Int,
+        curY: Int
+    ): RecyclerView.ViewHolder? {
+        val adapterOverride = adapter.getOverridenDropTarget(selected, dropTargets, curX, curY)
+        return when {
+            adapterOverride != null -> adapterOverride
+            else -> super.chooseDropTarget(selected, dropTargets, curX, curY)
         }
     }
+
+//    override fun onChildDraw(
+//        c: Canvas,
+//        recyclerView: RecyclerView,
+//        viewHolder: RecyclerView.ViewHolder,
+//        dX: Float,
+//        dY: Float,
+//        actionState: Int,
+//        isCurrentlyActive: Boolean
+//    ) {
+//        if (isCurrentlyActive || adapter.shouldDrawRecoveringView()) {
+//            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+//        } else {
+//            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+//        }
+//    }
 
     /**
      * Lets the adapter know when an item was moved. onDrop does not let the adapter know the position
@@ -93,9 +100,15 @@ class DragAndDropTouchCallback @JvmOverloads constructor(
      */
     interface Adapter {
         fun isValidMove(fromPosition: Int, toPosition: Int): Boolean
+        fun onDragStarted(viewHolder: RecyclerView.ViewHolder?)
         fun onDrop()
         fun onMoveTargeted(recyclerView: RecyclerView, source: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean
-        fun shouldDrawRecoveringView(): Boolean
+        fun getOverridenDropTarget(
+            selected: RecyclerView.ViewHolder,
+            dropTargets: MutableList<RecyclerView.ViewHolder>,
+            curX: Int,
+            curY: Int
+        ): RecyclerView.ViewHolder?
     }
 
     interface DraggableViewHolder {
