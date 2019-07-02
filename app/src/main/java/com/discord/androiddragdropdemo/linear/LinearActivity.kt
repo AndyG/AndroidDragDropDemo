@@ -81,9 +81,9 @@ class LinearActivity : AppCompatActivity() {
         }
 
         linearLayout.setOnDragListener { v, event ->
-            if (event.action == DragEvent.ACTION_DRAG_ENDED) {
-                draggedView = null
-            } else if (event.action == DragEvent.ACTION_DRAG_LOCATION) {
+            Log.d("findme", "got drag event: ${event.action}")
+
+            if (event.action == DragEvent.ACTION_DRAG_LOCATION) {
                 val existingPlaceholderIndex = getPlaceholderIndex()
                 val draggedItemViewIndex = linearLayout.indexOfChild(draggedView)
                 val adjustedDraggedItemIndex = when {
@@ -116,7 +116,7 @@ class LinearActivity : AppCompatActivity() {
                     linearLayout.removeViewAt(existingPlaceholderIndex)
                     linearLayout.addView(placeholderView, targetPlaceholderViewIndex)
                 }
-            } else if (event.action == DragEvent.ACTION_DROP) {
+            } else if (event.action == DragEvent.ACTION_DRAG_ENDED) {
                 val placeholderIndex = getPlaceholderIndex() ?: throw IllegalStateException("drop with no placeholder")
                 val draggedItemIndex = linearLayout.indexOfChild(draggedView)
 
@@ -127,6 +127,7 @@ class LinearActivity : AppCompatActivity() {
                 linearLayout.addView(draggedView, adjustedDropIndex)
 
                 draggedView?.visibility = View.VISIBLE
+                draggedView = null
             }
             true
         }
