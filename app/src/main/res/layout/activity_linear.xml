@@ -16,6 +16,12 @@
             app:layout_constraintRight_toRightOf="parent"
             android:orientation="vertical">
 
+        <View
+                android:layout_width="128dp"
+                android:layout_height="128dp"
+                android:background="@drawable/ring_black"
+                android:layout_margin="8dp"/>
+
         <TextView
                 android:id="@+id/red_circle"
                 android:layout_width="128dp"
