@@ -92,16 +92,12 @@ class LinearActivity : AppCompatActivity() {
                 }
 
                 val y = event.y
-                val firstItemCenter = halfItemSize
-                val secondItemCenter = (itemSize) + halfItemSize
+
                 // this doesn't take into account placeholders.
-                val targetIndex = if (y < firstItemCenter) {
-                    0
-                } else if (y < secondItemCenter) {
-                    1
-                } else {
-                    2
-                }
+                val targetIndex: Int = (0..2).sortedBy { index ->
+                    val center = itemSize * index + halfItemSize
+                    Math.abs(center - y)
+                }.first()
 
                 val isDownwardMove = targetIndex > adjustedDraggedItemIndex
 
@@ -143,18 +139,6 @@ class LinearActivity : AppCompatActivity() {
         greenCircle = findViewById(R.id.green_circle)
         placeholderView = findViewById(R.id.placeholder_view)
         placeholderView.tag = TAG_PLACEHOLDER
-    }
-
-    private fun findViewByClipData(data: ClipData): View {
-        val text = data.getItemAt(0).text
-        for (i in 0..linearLayout.childCount) {
-            val view = linearLayout.getChildAt(i)
-            if (view is TextView && view.text == text) {
-                return view
-            }
-        }
-
-        throw IllegalStateException("failed to find view with text: $text")
     }
 
     private fun getPlaceholderIndex(): Int? {
