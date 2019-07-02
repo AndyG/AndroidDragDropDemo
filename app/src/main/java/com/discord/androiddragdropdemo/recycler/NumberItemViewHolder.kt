@@ -1,36 +1,43 @@
-package com.discord.androiddragdropdemo
+package com.discord.androiddragdropdemo.recycler
 
-import android.graphics.Color
 import android.graphics.Rect
+import android.util.Log
 import android.view.View
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.discord.androiddragdropdemo.data.DragAndDropNumberItem
+import com.discord.androiddragdropdemo.R
 
-class SumItemViewHolder(view: View, private val layoutManager: LinearLayoutManager) : RecyclerView.ViewHolder(view),
+class NumberItemViewHolder(view: View, private val layoutManager: LinearLayoutManager)
+    : RecyclerView.ViewHolder(view),
     DragAndDropTouchCallback.DraggableViewHolder {
 
     private val transformedBoundingBoxRect = Rect()
+
+    var data: DragAndDropNumberItem? = null
 
     override fun onDragStateChanged(dragging: Boolean) {
         // no op
     }
 
     override fun canDrag(): Boolean {
-        return false
+        return true
     }
 
     private val textView: TextView = view.findViewById(R.id.draggable_view_text)
 
-    fun configure(dragAndDropSumItem: DragAndDropSumItem) {
-        val text = "${dragAndDropSumItem.curSum}"
-        this.textView.text = text
+    fun configure(dragAndDropNumberItem: DragAndDropNumberItem) {
+        this.data = dragAndDropNumberItem
 
-        if (dragAndDropSumItem.isTargeted) {
-            itemView.setBackgroundColor(Color.LTGRAY)
-        } else {
-            itemView.setBackgroundColor(Color.WHITE)
-        }
+        this.itemView.visibility = View.VISIBLE
+
+        val text = "Item number: ${dragAndDropNumberItem.number}"
+        this.textView.text = text
+    }
+
+    private fun computeBoundingBox() {
+        layoutManager.getTransformedBoundingBox(this.itemView, false, transformedBoundingBoxRect)
     }
 
     fun getDragAndDropOperation(isMovingUp: Boolean, curY: Int): DragDropAdapter.DragAndDropOperation? {
@@ -52,10 +59,16 @@ class SumItemViewHolder(view: View, private val layoutManager: LinearLayoutManag
 
         val middleRange = bottomOfTopRange..topOfBottomRange
 
+        Log.d("findme", "top range: $topRange")
+        Log.d("findme", "middle range: $middleRange")
+        Log.d("findme", "bottom range: $bottomRange")
+
         val isInMiddle = curY in middleRange
 
-        return if (isInMiddle) {
-            DragDropAdapter.DragAndDropOperation.AddToSum
+        Log.d("findme", "isInMiddle: $isInMiddle")
+
+        return if (curY in middleRange) {
+            DragDropAdapter.DragAndDropOperation.CreateSum
         } else if (isMovingUp && curY in topRange) {
             DragDropAdapter.DragAndDropOperation.Move
         } else if (!isMovingUp && curY in bottomRange) {
@@ -65,8 +78,24 @@ class SumItemViewHolder(view: View, private val layoutManager: LinearLayoutManag
         }
     }
 
-    private fun computeBoundingBox() {
-        layoutManager.getTransformedBoundingBox(this.itemView, false, transformedBoundingBoxRect)
+    fun getCenterY(): Int {
+        computeBoundingBox()
+        return transformedBoundingBoxRect.centerY()
+    }
+
+    fun onDroppedOverSum() {
+        Log.d("findme", "onDroppedOverSum")
+        this.itemView.visibility = View.GONE
+    }
+
+    fun configureWithSum(otherNumber: Int?) {
+        if (otherNumber != null) {
+            val text = "Item number: ${data?.number} + $otherNumber"
+            this.textView.text = text
+        } else {
+            val text = "Item number: ${data?.number}"
+            this.textView.text = text
+        }
     }
 
     companion object {

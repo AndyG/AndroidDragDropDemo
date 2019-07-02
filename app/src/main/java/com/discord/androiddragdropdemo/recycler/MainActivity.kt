@@ -1,11 +1,13 @@
-package com.discord.androiddragdropdemo
+package com.discord.androiddragdropdemo.recycler
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.TypedValue
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.ItemTouchHelper
+import com.discord.androiddragdropdemo.data.DragAndDropNumberItem
+import com.discord.androiddragdropdemo.data.DragAndDropSumItem
+import com.discord.androiddragdropdemo.R
 
 
 class MainActivity : AppCompatActivity() {

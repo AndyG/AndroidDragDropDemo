@@ -1,4 +1,4 @@
-package com.discord.androiddragdropdemo
+package com.discord.androiddragdropdemo.recycler
 
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView

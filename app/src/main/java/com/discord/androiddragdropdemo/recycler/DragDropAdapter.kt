@@ -1,14 +1,18 @@
-package com.discord.androiddragdropdemo
+package com.discord.androiddragdropdemo.recycler
 
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.discord.androiddragdropdemo.data.DragAndDropNumberItem
+import com.discord.androiddragdropdemo.data.DragAndDropSumItem
+import com.discord.androiddragdropdemo.R
 import kotlin.random.Random
 
 class DragDropAdapter(private val layoutManager: LinearLayoutManager)
-    : RecyclerView.Adapter<RecyclerView.ViewHolder>(), DragAndDropTouchCallback.Adapter {
+    : RecyclerView.Adapter<RecyclerView.ViewHolder>(),
+    DragAndDropTouchCallback.Adapter {
 
     private var curDragFromPos: Int? = null
     private var curDragToPos: Int? = null
@@ -41,7 +45,8 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
             swapItems(fromPos, toPos)
             return true
         } else if (target is SumItemViewHolder
-            && curComputedDropOperation is DragAndDropOperation.AddToSum) {
+            && curComputedDropOperation is DragAndDropOperation.AddToSum
+        ) {
             untargetCurrentlyTargetedItem()
             targetItem(toPos)
         } else {
@@ -77,7 +82,8 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
         curComputedDropOperation = null
 
         if (operation !is DragAndDropOperation.AddToSum
-            && operation !is DragAndDropOperation.CreateSum) {
+            && operation !is DragAndDropOperation.CreateSum
+        ) {
             return
         }
 
@@ -103,7 +109,11 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
 
         val newItem: DragAndDropSumItem = when (curTargetItem) {
             is DragAndDropNumberItem -> {
-                DragAndDropSumItem(curSum = curTargetItem.number + curDragItem.number, isTargeted = false, id = Random.nextLong())
+                DragAndDropSumItem(
+                    curSum = curTargetItem.number + curDragItem.number,
+                    isTargeted = false,
+                    id = Random.nextLong()
+                )
             }
             is DragAndDropSumItem -> {
                 curTargetItem.copy(curSum = curTargetItem.curSum + curDragItem.number)
@@ -149,8 +159,14 @@ class DragDropAdapter(private val layoutManager: LinearLayoutManager)
             false)
 
         return when (viewType) {
-            VIEW_TYPE_NUMBER -> NumberItemViewHolder(view, layoutManager)
-            VIEW_TYPE_SUM -> SumItemViewHolder(view, layoutManager)
+            VIEW_TYPE_NUMBER -> NumberItemViewHolder(
+                view,
+                layoutManager
+            )
+            VIEW_TYPE_SUM -> SumItemViewHolder(
+                view,
+                layoutManager
+            )
             else -> throw IllegalStateException("invalid view type: $viewType")
         }
     }
