@@ -29,7 +29,6 @@
                     android:layout_margin="8dp"/>
 
             <TextView
-                    android:id="@+id/red_circle"
                     android:layout_width="128dp"
                     android:layout_height="128dp"
                     android:text="1"
@@ -40,7 +39,6 @@
                     android:layout_margin="8dp"/>
 
             <TextView
-                    android:id="@+id/blue_circle"
                     android:layout_width="128dp"
                     android:layout_height="128dp"
                     android:text="2"
@@ -51,10 +49,39 @@
                     android:layout_margin="8dp"/>
 
             <TextView
-                    android:id="@+id/green_circle"
                     android:layout_width="128dp"
                     android:layout_height="128dp"
                     android:text="3"
+                    android:textSize="64sp"
+                    android:textColor="#FFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/circle_blue"
+                    android:layout_margin="8dp"/>
+
+            <TextView
+                    android:layout_width="128dp"
+                    android:layout_height="128dp"
+                    android:text="4"
+                    android:textSize="64sp"
+                    android:textColor="#FFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/circle_red"
+                    android:layout_margin="8dp"/>
+
+            <TextView
+                    android:layout_width="128dp"
+                    android:layout_height="128dp"
+                    android:text="5"
+                    android:textSize="64sp"
+                    android:textColor="#FFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/circle_green"
+                    android:layout_margin="8dp"/>
+
+            <TextView
+                    android:layout_width="128dp"
+                    android:layout_height="128dp"
+                    android:text="6"
                     android:textSize="64sp"
                     android:textColor="#FFFFFF"
                     android:gravity="center"

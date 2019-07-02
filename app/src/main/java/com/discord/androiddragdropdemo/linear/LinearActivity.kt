@@ -16,9 +16,6 @@ import kotlin.IllegalStateException
 class LinearActivity : AppCompatActivity() {
 
     private lateinit var linearLayout: LinearLayout
-    private lateinit var redCircle: TextView
-    private lateinit var blueCircle: TextView
-    private lateinit var greenCircle: TextView
     private lateinit var placeholderView: View
 
     private var itemSize: Float = 0f
@@ -38,51 +35,25 @@ class LinearActivity : AppCompatActivity() {
     private var draggedView: View? = null
 
     private fun configureDragAndDrop() {
-        redCircle.setOnLongClickListener { view ->
-            val item = ClipData.Item(redCircle.text)
-            val dragData = ClipData(redCircle.text, arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), item)
-            val shadow = View.DragShadowBuilder(view)
+        for (i in 0 until linearLayout.childCount) {
+            val view = linearLayout.getChildAt(i) as TextView
 
-            view.visibility = View.GONE
-            val curIndex = linearLayout.indexOfChild(redCircle)
-            linearLayout.addView(placeholderView, curIndex)
-            draggedView = view
-            view.startDrag(dragData, shadow, null, 0)
+            view.setOnLongClickListener {
+                val item = ClipData.Item(view.text)
+                val dragData = ClipData(view.text, arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), item)
+                val shadow = View.DragShadowBuilder(view)
 
-            true
-        }
+                view.visibility = View.GONE
+                val curIndex = linearLayout.indexOfChild(view)
+                linearLayout.addView(placeholderView, curIndex)
+                draggedView = view
+                view.startDrag(dragData, shadow, null, 0)
 
-        blueCircle.setOnLongClickListener { view ->
-            val item = ClipData.Item(blueCircle.text)
-            val dragData = ClipData(blueCircle.text, arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), item)
-            val shadow = View.DragShadowBuilder(view)
-
-            view.visibility = View.GONE
-            val curIndex = linearLayout.indexOfChild(blueCircle)
-            linearLayout.addView(placeholderView, curIndex)
-            draggedView = view
-            view.startDrag(dragData, shadow, null, 0)
-
-            true
-        }
-
-        greenCircle.setOnLongClickListener { view ->
-            val item = ClipData.Item(greenCircle.text)
-            val dragData = ClipData(greenCircle.text, arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), item)
-            val shadow = View.DragShadowBuilder(view)
-
-            view.visibility = View.GONE
-            val curIndex = linearLayout.indexOfChild(greenCircle)
-            linearLayout.addView(placeholderView, curIndex)
-            draggedView = view
-            view.startDrag(dragData, shadow, null, 0)
-
-            true
+                true
+            }
         }
 
         linearLayout.setOnDragListener { v, event ->
-            Log.d("findme", "got drag event: ${event.action}")
-
             if (event.action == DragEvent.ACTION_DRAG_LOCATION) {
                 val existingPlaceholderIndex = getPlaceholderIndex()
                 val draggedItemViewIndex = linearLayout.indexOfChild(draggedView)
@@ -93,15 +64,20 @@ class LinearActivity : AppCompatActivity() {
 
                 val y = event.y
 
-                // this doesn't take into account placeholders.
-                val targetIndex: Int = (0..2).sortedBy { index ->
+                Log.d("findme", "linearlayout got DRAG_LOCATION event. y: ${event.y}.")
+                val numCircles = when {
+                    existingPlaceholderIndex != null -> linearLayout.childCount - 1
+                    else -> linearLayout.childCount
+                }
+
+                val targetIndex: Int = (0 until numCircles).sortedBy { index ->
                     val center = itemSize * index + halfItemSize
                     Math.abs(center - y)
                 }.first()
 
-                val isDownwardMove = targetIndex > adjustedDraggedItemIndex
+                Log.d("findme", "linearlayout got DRAG_LOCATION event. computed index: $targetIndex")
 
-                Log.v("findme", "linearlayout got DRAG_LOCATION event. y: ${event.y}. itemSize: $itemSize. computed index: $targetIndex")
+                val isDownwardMove = targetIndex > adjustedDraggedItemIndex
 
                 val targetPlaceholderViewIndex = when {
                     isDownwardMove -> targetIndex + 1 // the GONE view is affecting the computation, so add 1 to account for it.
@@ -135,9 +111,6 @@ class LinearActivity : AppCompatActivity() {
 
     private fun bindViews() {
         linearLayout = findViewById(R.id.linear_layout)
-        redCircle = findViewById(R.id.red_circle)
-        blueCircle = findViewById(R.id.blue_circle)
-        greenCircle = findViewById(R.id.green_circle)
         placeholderView = findViewById(R.id.placeholder_view)
         placeholderView.tag = TAG_PLACEHOLDER
     }
