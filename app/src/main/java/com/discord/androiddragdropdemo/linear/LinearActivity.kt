@@ -51,6 +51,7 @@ class LinearActivity : AppCompatActivity() {
                 view.visibility = View.GONE
                 val curIndex = linearLayout.indexOfChild(view)
                 linearLayout.addView(placeholderView, curIndex)
+                Log.d("findme", "initialized placeholder at: ${getPlaceholderIndex()}")
                 draggedView = view
                 view.startDrag(dragData, shadow, null, 0)
 
@@ -60,50 +61,53 @@ class LinearActivity : AppCompatActivity() {
 
         linearLayout.setOnDragListener { v, event ->
             if (event.action == DragEvent.ACTION_DRAG_LOCATION) {
-                val existingPlaceholderIndex = getPlaceholderIndex()!!
-                val draggedItemViewIndex = linearLayout.indexOfChild(draggedView)
-                val adjustedDraggedItemIndex = when {
-                    existingPlaceholderIndex < draggedItemViewIndex -> draggedItemViewIndex - 1
-                    else -> draggedItemViewIndex
-                }
+                val existingPlaceholderViewIndex = getPlaceholderIndex()!!
+                val ghostViewIndex = linearLayout.indexOfChild(draggedView!!)
 
                 val touchY = event.y
                 val numCircles = linearLayout.childCount - 1
 
-                val targetIndex: Int = (0 until numCircles).sortedBy { index ->
+                val targetPlaceholderVisualIndex: Int = (0 until numCircles).sortedBy { index ->
                     val center = itemSize * index + halfItemSize
                     Math.abs(center - touchY)
                 }.first()
 
-                val centerOfTarget = itemSize * targetIndex + halfItemSize
+                val centerOfTarget = itemSize * targetPlaceholderVisualIndex + halfItemSize
                 val isCloseToCenter = Math.abs(centerOfTarget - touchY) < addThreshold
                 val isAboveCenterThreshold = !isCloseToCenter && touchY < centerOfTarget
                 val isBelowCenterThreshold = !isCloseToCenter && touchY > centerOfTarget
 
                 val targetPlaceholderViewIndex = when {
-                    targetIndex > adjustedDraggedItemIndex -> targetIndex + 1 // the GONE view is affecting the computation, so add 1 to account for it.
-                    else -> targetIndex
+                    ghostViewIndex < targetPlaceholderVisualIndex -> targetPlaceholderVisualIndex + 1 // account for the GONE view.
+                    else -> targetPlaceholderVisualIndex
                 }
 
                 val moveDir = when {
-                    targetPlaceholderViewIndex > existingPlaceholderIndex -> 1
-                    targetPlaceholderViewIndex < existingPlaceholderIndex -> -1
+                    existingPlaceholderViewIndex > targetPlaceholderViewIndex -> -1
+                    existingPlaceholderViewIndex < targetPlaceholderViewIndex -> 1
                     else -> 0
                 }
 
                 // add the placeholder
                 if ((moveDir == 1 && isBelowCenterThreshold) || (moveDir == -1 && isAboveCenterThreshold)) {
                     // need to move the placeholder.
-                    linearLayout.removeViewAt(existingPlaceholderIndex)
+                    linearLayout.removeViewAt(existingPlaceholderViewIndex)
                     linearLayout.addView(placeholderView, targetPlaceholderViewIndex)
+                    Log.d("findme", "new placeholder index: ${getPlaceholderIndex()}")
                 }
+//                } else if (isCloseToCenter) {
+//                    val newTarget = linearLayout.getChildAt(targetPlaceholderViewIndex) as? TextView
+//                    if (newTarget != null) {
+////                        Log.d("findme", "got new target with text: ${newTarget.text}")
+//                    }
+//                }
 
                 val allowScrolls = (System.currentTimeMillis() - lastScrollTime) > SCROLL_THRESHOLD_MS
                 if (allowScrolls) {
                     val scrollY = scrollView.scrollY
                     val bottomOfScrollView = scrollY + scrollView.height
-                    val placeholderTop = targetIndex * itemSize
-                    val placeholderBottom = targetIndex * itemSize + itemSize
+                    val placeholderTop = targetPlaceholderVisualIndex * itemSize
+                    val placeholderBottom = targetPlaceholderVisualIndex * itemSize + itemSize
 
                     if (placeholderBottom > bottomOfScrollView || Math.abs(touchY - bottomOfScrollView) < (itemSize / 2)) {
                         scrollView.smoothScrollBy(0, itemSize.toInt())
