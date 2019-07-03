@@ -2,24 +2,27 @@ package com.discord.androiddragdropdemo.linear
 
 import android.content.ClipData
 import android.content.ClipDescription
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.DragEvent
 import android.view.View
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
 import com.discord.androiddragdropdemo.R
 import com.discord.androiddragdropdemo.utils.dpToPx
-import kotlin.IllegalStateException
 
 class LinearActivity : AppCompatActivity() {
 
+    private lateinit var scrollView: ScrollView
     private lateinit var linearLayout: LinearLayout
     private lateinit var placeholderView: View
 
     private var itemSize: Float = 0f
     private var halfItemSize: Float = 0f
+
+    private var lastScrollTime: Long = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,7 +67,6 @@ class LinearActivity : AppCompatActivity() {
 
                 val y = event.y
 
-                Log.d("findme", "linearlayout got DRAG_LOCATION event. y: ${event.y}.")
                 val numCircles = when {
                     existingPlaceholderIndex != null -> linearLayout.childCount - 1
                     else -> linearLayout.childCount
@@ -74,8 +76,6 @@ class LinearActivity : AppCompatActivity() {
                     val center = itemSize * index + halfItemSize
                     Math.abs(center - y)
                 }.first()
-
-                Log.d("findme", "linearlayout got DRAG_LOCATION event. computed index: $targetIndex")
 
                 val isDownwardMove = targetIndex > adjustedDraggedItemIndex
 
@@ -87,10 +87,33 @@ class LinearActivity : AppCompatActivity() {
                 // add the placeholder
                 if (existingPlaceholderIndex == null) {
                     linearLayout.addView(placeholderView, targetPlaceholderViewIndex)
-                } else if (targetPlaceholderViewIndex != existingPlaceholderIndex){
+                } else if (targetPlaceholderViewIndex != existingPlaceholderIndex) {
                     // need to move the placeholder.
                     linearLayout.removeViewAt(existingPlaceholderIndex)
                     linearLayout.addView(placeholderView, targetPlaceholderViewIndex)
+                }
+
+                val allowScrolls = (System.currentTimeMillis() - lastScrollTime) > SCROLL_THRESHOLD_MS
+                if (allowScrolls) {
+                    val touchY = y
+                    val scrollY = scrollView.scrollY
+                    val bottomOfScrollView = scrollY + scrollView.height
+                    val placeholderTop = targetIndex * itemSize
+                    val placeholderBottom = targetIndex * itemSize + itemSize
+
+                    Log.d("findme", "bottom: $bottomOfScrollView -- touchPos: $touchY -- itemSize: $itemSize")
+                    Log.d("findme", "touchY: $touchY -- scrollY: $scrollY")
+                    Log.d("findme", "placeholder top: $placeholderTop")
+                    Log.d("findme", "placeholder bottom: $placeholderBottom")
+                    Log.d("findme", "--------------------------------")
+
+                    if (placeholderBottom > bottomOfScrollView || Math.abs(touchY - bottomOfScrollView) < (itemSize / 2)) {
+                        scrollView.smoothScrollBy(0, itemSize.toInt())
+                        lastScrollTime = System.currentTimeMillis()
+                    } else if (placeholderTop < scrollY || Math.abs(touchY - scrollY) < (itemSize / 2)) {
+                        scrollView.smoothScrollBy(0, -itemSize.toInt())
+                        lastScrollTime = System.currentTimeMillis()
+                    }
                 }
             } else if (event.action == DragEvent.ACTION_DRAG_ENDED) {
                 val placeholderIndex = getPlaceholderIndex() ?: throw IllegalStateException("drop with no placeholder")
@@ -110,6 +133,7 @@ class LinearActivity : AppCompatActivity() {
     }
 
     private fun bindViews() {
+        scrollView = findViewById(R.id.scroll_view)
         linearLayout = findViewById(R.id.linear_layout)
         placeholderView = findViewById(R.id.placeholder_view)
         placeholderView.tag = TAG_PLACEHOLDER
@@ -127,5 +151,6 @@ class LinearActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG_PLACEHOLDER = "placeholder"
+        private const val SCROLL_THRESHOLD_MS = 250L
     }
 }
