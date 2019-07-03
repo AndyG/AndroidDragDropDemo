@@ -35,7 +35,7 @@ class LinearActivity : AppCompatActivity() {
 
         val numberSize = dpToPx(NUMBER_VIEW_SIZE_DP, resources).toInt()
         val margin = dpToPx(NUMBER_VIEW_MARGIN_DP, resources).toInt()
-        itemSize = numberSize + (margin * 2).toFloat()
+        itemSize = numberSize.toFloat() //+ (margin * 2).toFloat()
         halfItemSize = itemSize / 2
         addThreshold = (itemSize * DISTANCE_FROM_CENTER_FOR_ADD).toFloat()
 
@@ -47,7 +47,7 @@ class LinearActivity : AppCompatActivity() {
 
     private fun configureDragAndDrop() {
         for (i in 0 until linearLayout.childCount) {
-            val view = linearLayout.getChildAt(i) as ColoredNumberView
+            val view = linearLayout.getChildAt(i) as? ColoredNumberView ?: continue
 
             view.setOnLongClickListener {
                 val numberStr = view.getColoredNumber()!!.number.toString()
@@ -187,24 +187,39 @@ class LinearActivity : AppCompatActivity() {
         }
     }
 
+    @Suppress("IMPLICIT_CAST_TO_ANY")
     private fun generateData(count: Int) {
-        val coloredNumbers = (0..count).map {
-            ColoredNumber(number = it, color = when(it % 3) {
-                0 -> ColoredNumber.Color.RED
-                1 -> ColoredNumber.Color.GREEN
-                2 -> ColoredNumber.Color.BLUE
-                else -> throw IllegalStateException("unexpected color")
-            })
-        }
+        val data = (0..count).map {
+            if (it % 10 == 0) {
+                Folder(isOpen = true, numChildren = 3)
+            } else {
+                ColoredNumber(number = it, color = when(it % 3) {
+                    0 -> ColoredNumber.Color.RED
+                    1 -> ColoredNumber.Color.GREEN
+                    2 -> ColoredNumber.Color.BLUE
+                    else -> throw IllegalStateException("unexpected color")
+                })
+            }
+        }//.filter { it !is Folder }
 
-        coloredNumbers.forEach { coloredNumber ->
-            val view = ColoredNumberView(context = this)
-            view.configure(coloredNumber)
-            val numberSize = dpToPx(NUMBER_VIEW_SIZE_DP, resources).toInt()
-            val layoutParams = LinearLayout.LayoutParams(numberSize, numberSize)
-            layoutParams.setMargins(dpToPx(NUMBER_VIEW_MARGIN_DP, resources).toInt())
-            view.layoutParams = layoutParams
-            linearLayout.addView(view)
+        data.forEach { item ->
+            if (item is ColoredNumber) {
+                val view = ColoredNumberView(context = this)
+                view.configure(item)
+                val numberSize = dpToPx(NUMBER_VIEW_SIZE_DP, resources).toInt()
+                val layoutParams = LinearLayout.LayoutParams(numberSize, numberSize)
+//                layoutParams.setMargins(dpToPx(NUMBER_VIEW_MARGIN_DP, resources).toInt())
+                view.layoutParams = layoutParams
+                linearLayout.addView(view)
+            } else if (item is Folder) {
+                val view = NumberFolderView(context = this)
+                val numberSize = dpToPx(NUMBER_VIEW_SIZE_DP, resources).toInt()
+//                val marginSize = dpToPx(NUMBER_VIEW_MARGIN_DP, resources)
+                val layoutParams = LinearLayout.LayoutParams(numberSize, numberSize)
+                view.layoutParams = layoutParams
+                view.setNumChildren(3)
+                linearLayout.addView(view)
+            }
         }
     }
 

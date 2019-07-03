@@ -21,14 +21,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:gravity="center_horizontal">
+                android:gravity="center_horizontal"
+                android:clipChildren="false">
 
             <View
                     android:id="@+id/placeholder_view"
                     android:layout_width="64dp"
                     android:layout_height="64dp"
-                    android:background="@drawable/ring_black"
-                    android:layout_margin="4dp"/>
+                    android:background="@drawable/ring_black"/>
 
         </LinearLayout>
 
