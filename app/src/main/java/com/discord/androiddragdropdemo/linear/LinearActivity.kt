@@ -27,6 +27,8 @@ class LinearActivity : AppCompatActivity() {
 
     private var currentTarget: ColoredNumberView? = null
 
+    private var data: List<Item> = emptyList()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_linear)
@@ -191,19 +193,23 @@ class LinearActivity : AppCompatActivity() {
     private fun generateData(count: Int) {
         val data = (0..count).map {
             if (it % 10 == 0) {
-                Folder(isOpen = true, numChildren = 3)
+                Item.Folder(isOpen = true, numChildren = 3, id = it.toLong())
             } else {
-                ColoredNumber(number = it, color = when(it % 3) {
-                    0 -> ColoredNumber.Color.RED
-                    1 -> ColoredNumber.Color.GREEN
-                    2 -> ColoredNumber.Color.BLUE
-                    else -> throw IllegalStateException("unexpected color")
-                })
+                Item.ColoredNumber(
+                    number = it,
+                    color = when (it % 3) {
+                        0 -> Item.ColoredNumber.Color.RED
+                        1 -> Item.ColoredNumber.Color.GREEN
+                        2 -> Item.ColoredNumber.Color.BLUE
+                        else -> throw IllegalStateException("unexpected color")
+                    },
+                    id = it.toLong()
+                )
             }
         }
 
         data.forEach { item ->
-            if (item is ColoredNumber) {
+            if (item is Item.ColoredNumber) {
                 val view = ColoredNumberView(context = this)
                 view.configure(item)
                 val numberSize = dpToPx(NUMBER_VIEW_SIZE_DP, resources).toInt()
@@ -211,7 +217,7 @@ class LinearActivity : AppCompatActivity() {
                 layoutParams.setMargins(dpToPx(NUMBER_VIEW_MARGIN_DP, resources).toInt())
                 view.layoutParams = layoutParams
                 linearLayout.addView(view)
-            } else if (item is Folder) {
+            } else if (item is Item.Folder) {
                 val view = NumberFolderView(context = this)
                 val numberSize = dpToPx(NUMBER_VIEW_SIZE_DP, resources).toInt()
                 val marginSize = dpToPx(NUMBER_VIEW_MARGIN_DP, resources)
