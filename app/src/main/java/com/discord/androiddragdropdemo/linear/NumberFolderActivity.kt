@@ -43,7 +43,7 @@ class NumberFolderActivity : AppCompatActivity() {
             .interval(1000L, 1000L, TimeUnit.MILLISECONDS)
             .map { it.toInt() % 5 }
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe { numberFolderView.setNumChildren(it) }
+            .subscribe { numberFolderView.setNumChildren(it, itemSize, 0f) }
     }
 
     companion object {

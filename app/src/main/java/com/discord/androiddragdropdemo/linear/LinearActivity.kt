@@ -35,11 +35,11 @@ class LinearActivity : AppCompatActivity() {
 
         val numberSize = dpToPx(NUMBER_VIEW_SIZE_DP, resources).toInt()
         val margin = dpToPx(NUMBER_VIEW_MARGIN_DP, resources).toInt()
-        itemSize = numberSize.toFloat() //+ (margin * 2).toFloat()
+        itemSize = numberSize.toFloat() + (margin * 2).toFloat()
         halfItemSize = itemSize / 2
         addThreshold = (itemSize * DISTANCE_FROM_CENTER_FOR_ADD).toFloat()
 
-        generateData(15)
+        generateData(100)
         configureDragAndDrop()
     }
 
@@ -200,7 +200,7 @@ class LinearActivity : AppCompatActivity() {
                     else -> throw IllegalStateException("unexpected color")
                 })
             }
-        }//.filter { it !is Folder }
+        }
 
         data.forEach { item ->
             if (item is ColoredNumber) {
@@ -208,16 +208,17 @@ class LinearActivity : AppCompatActivity() {
                 view.configure(item)
                 val numberSize = dpToPx(NUMBER_VIEW_SIZE_DP, resources).toInt()
                 val layoutParams = LinearLayout.LayoutParams(numberSize, numberSize)
-//                layoutParams.setMargins(dpToPx(NUMBER_VIEW_MARGIN_DP, resources).toInt())
+                layoutParams.setMargins(dpToPx(NUMBER_VIEW_MARGIN_DP, resources).toInt())
                 view.layoutParams = layoutParams
                 linearLayout.addView(view)
             } else if (item is Folder) {
                 val view = NumberFolderView(context = this)
                 val numberSize = dpToPx(NUMBER_VIEW_SIZE_DP, resources).toInt()
-//                val marginSize = dpToPx(NUMBER_VIEW_MARGIN_DP, resources)
+                val marginSize = dpToPx(NUMBER_VIEW_MARGIN_DP, resources)
                 val layoutParams = LinearLayout.LayoutParams(numberSize, numberSize)
+                layoutParams.setMargins(marginSize.toInt())
                 view.layoutParams = layoutParams
-                view.setNumChildren(3)
+                view.setNumChildren(3, itemSize, marginSize)
                 linearLayout.addView(view)
             }
         }
