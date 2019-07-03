@@ -134,13 +134,28 @@ class LinearActivity : AppCompatActivity() {
                 val placeholderIndex = getPlaceholderIndex() ?: throw IllegalStateException("drop with no placeholder")
                 val draggedItemIndex = linearLayout.indexOfChild(draggedView)
 
-                linearLayout.removeView(placeholderView)
-                linearLayout.removeView(draggedView)
+                val currentTarget = currentTarget
 
-                val adjustedDropIndex = if (draggedItemIndex < placeholderIndex) placeholderIndex - 1 else placeholderIndex
-                linearLayout.addView(draggedView, adjustedDropIndex)
+                if (currentTarget == null) {
+                    linearLayout.removeView(placeholderView)
+                    linearLayout.removeView(draggedView)
 
-                draggedView?.visibility = View.VISIBLE
+                    val adjustedDropIndex =
+                        if (draggedItemIndex < placeholderIndex) placeholderIndex - 1 else placeholderIndex
+                    linearLayout.addView(draggedView, adjustedDropIndex)
+
+                    draggedView?.visibility = View.VISIBLE
+                    draggedView = null
+                } else {
+                    currentTarget.setIsHighlighted(false)
+                    val draggedNumber = (linearLayout.getChildAt(draggedItemIndex) as? ColoredNumberView)?.getColoredNumber()!!
+                    val targetNumber = (currentTarget as? ColoredNumberView)?.getColoredNumber()!!
+                    currentTarget.configure(targetNumber.copy(number = targetNumber.number + draggedNumber.number))
+                    linearLayout.removeView(placeholderView)
+                    linearLayout.removeView(draggedView)
+                    this.currentTarget = null
+                }
+
                 draggedView = null
             }
             true
