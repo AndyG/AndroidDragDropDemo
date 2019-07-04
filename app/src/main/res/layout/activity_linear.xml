@@ -22,7 +22,8 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:gravity="center_horizontal"
-                android:clipChildren="false">
+                android:clipChildren="false"
+                android:animateLayoutChanges="true">
 
         </LinearLayout>
 
