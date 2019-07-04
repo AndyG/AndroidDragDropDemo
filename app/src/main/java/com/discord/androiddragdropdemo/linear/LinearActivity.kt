@@ -1,8 +1,11 @@
 package com.discord.androiddragdropdemo.linear
 
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipDescription
 import android.os.Bundle
 import android.util.Log
+import android.view.DragEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.LinearLayout
@@ -13,6 +16,9 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import com.discord.androiddragdropdemo.R
 import com.discord.androiddragdropdemo.utils.dpToPx
+import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import java.util.concurrent.TimeUnit
 
 class LinearActivity : AppCompatActivity() {
 
@@ -27,9 +33,7 @@ class LinearActivity : AppCompatActivity() {
 
     private var currentTarget: ColoredNumberView? = null
 
-    private var dataSnapshot = ArrayList<Item>()
-
-    private var itemIndex = HashMap<Long, Item>()
+    private var dataSnapshot : List<Item> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,13 +48,12 @@ class LinearActivity : AppCompatActivity() {
 
         val data = generateData(5)
         onNewData(data)
+
+        configureDragAndDrop()
     }
 
     @SuppressLint("UseSparseArrays")
     private fun onNewData(newData: List<Item>) {
-        itemIndex.clear()
-        newData.associateByTo(itemIndex, { it.id })
-
         val oldData = this.dataSnapshot
         Log.d("findme", "oldData: \n${oldData.joinToString("\n")}")
         Log.d("findme", "newData: \n${newData.joinToString("\n")}")
@@ -77,17 +80,23 @@ class LinearActivity : AppCompatActivity() {
             }
         }
 
+        // TODO: use a sparse array for this maybe?
+        val updates = ArrayList<Update?>(oldData.size)
+        for (i in 0 until oldData.size) {
+            updates.add(null)
+        }
+
         val result = DiffUtil.calculateDiff(cb, false)
+        this.dataSnapshot = newData.toMutableList()
 
         result.dispatchUpdatesTo(object : ListUpdateCallback {
             override fun onChanged(position: Int, count: Int, payload: Any?) {
+                Log.d("findme", "changed. position: $position -- count: $count")
                 for (i in 0 until count) {
-                    val itemId = dataSnapshot[position + i].id
-                    dataSnapshot[position + i] = itemIndex[itemId]!!
-                    updateView(position + i)
+                    updates[position + i] = Update.CHANGE
                 }
 
-                Log.d("findme", "updated: \n${dataSnapshot.joinToString("\n")}")
+                Log.d("findme", "post change updates: \n\t${updates.joinToString("\n\t")}")
             }
 
             override fun onMoved(fromPosition: Int, toPosition: Int) {
@@ -96,33 +105,32 @@ class LinearActivity : AppCompatActivity() {
 
             override fun onInserted(position: Int, count: Int) {
                 Log.d("findme", "inserted. position: $position -- count: $count")
-                for (i in 0 until count) {
-                    val index = position + i
-                    val item = newData[index]
-                    dataSnapshot.add(index, item)
 
-                    val view = createView(index)
-                    view.setOnClickListener { onItemClicked(item.id) }
-                    linearLayout.addView(view, index)
+                for (i in 0 until count) {
+                    updates.add(position, Update.INSERT)
                 }
 
-                Log.d("findme", "updated: \n${dataSnapshot.joinToString("\n")}")
+                Log.d("findme", "post insert updates: \n\t${updates.joinToString("\n\t")}")
             }
 
             override fun onRemoved(position: Int, count: Int) {
                 Log.d("findme", "removed. position: $position -- count: $count")
                 for (i in 0 until count) {
-                    dataSnapshot.removeAt(position)
-                    linearLayout.removeViewAt(position)
+                    // this shifts the updates appropriately.
+                    updates.removeAt(position)
+                    removeView(position)
                 }
-
-                Log.d("findme", "updated: \n${dataSnapshot.joinToString("\n")}")
+                Log.d("findme", "post remove updates: \n\t${updates.joinToString("\n\t")}")
             }
         })
 
-        Log.d("findme", "postOp data: \n${dataSnapshot.joinToString("\n")}")
-        if (newData != dataSnapshot) {
-            throw IllegalStateException("new data and postop data are not equal!")
+        Log.d("findme", "computed updates: \n\t${updates.joinToString("\n\t")}")
+        updates.forEachIndexed { position, update ->
+            when (update) {
+                null -> { }
+                Update.INSERT -> insertView(position)
+                Update.CHANGE -> updateView(position)
+            }
         }
     }
 
@@ -132,7 +140,10 @@ class LinearActivity : AppCompatActivity() {
 
         when (item) {
             Item.Placeholder -> {
-
+                val view = linearLayout.getChildAt(position)
+                if (view is NumberFolderView || view is ColoredNumberView) {
+                    throw IllegalStateException("invalid view type: ${view.javaClass}")
+                }
             }
             is Item.Folder -> {
                 val view = linearLayout.getChildAt(position) as NumberFolderView
@@ -151,7 +162,19 @@ class LinearActivity : AppCompatActivity() {
                 }
             }
         }
+    }
 
+    private fun insertView(position: Int) {
+        Log.d("findme", "insertView. position: $position -- item: ${dataSnapshot[position]}")
+        val view = createView(position)
+        val item = dataSnapshot[position]
+//        view.setOnClickListener { onItemClicked(item.id) }
+        linearLayout.addView(view, position)
+    }
+
+    private fun removeView(position: Int) {
+        Log.d("findme", "removeView. position: $position")
+        linearLayout.removeViewAt(position)
     }
 
     private fun createView(index: Int): View {
@@ -181,138 +204,155 @@ class LinearActivity : AppCompatActivity() {
         }
     }
 
-    private var draggedView: View? = null
+    private var draggedItem: Item.ColoredNumber? = null
 
     private fun configureDragAndDrop() {
-//        for (i in 0 until linearLayout.childCount) {
-//            val view = linearLayout.getChildAt(i) as? ColoredNumberView ?: continue
-//
-//            view.setOnLongClickListener {
-//                val numberStr = view.getColoredNumber()!!.number.toString()
-//                val item = ClipData.Item(numberStr)
-//                val dragData = ClipData(numberStr, arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), item)
-//                val shadow = View.DragShadowBuilder(view)
-//
-//                view.visibility = View.GONE
-//                val curIndex = linearLayout.indexOfChild(view)
-//                linearLayout.addView(placeholderView, curIndex)
-//                Log.d("findme", "initialized placeholder at: ${getPlaceholderIndex()}")
-//                draggedView = view
-//                view.startDrag(dragData, shadow, null, 0)
-//
-//                true
-//            }
-//        }
-//
-//        linearLayout.setOnDragListener { v, event ->
+        for (i in 0 until linearLayout.childCount) {
+            val view = linearLayout.getChildAt(i) as? ColoredNumberView ?: continue
+
+            view.setOnLongClickListener {
+                val item = view.getColoredNumber()!!
+
+                val numberStr = item.number.toString()
+                val clipDataItem = ClipData.Item(numberStr)
+                val dragData = ClipData(numberStr, arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), clipDataItem)
+                val shadow = View.DragShadowBuilder(view)
+
+                val curIndex = linearLayout.indexOfChild(view)
+                val editingList = ArrayList(dataSnapshot)
+                editingList.apply {
+                    set(curIndex, item.copy(isGone = true))
+                    add(curIndex, Item.Placeholder)
+                }
+                onNewData(editingList)
+
+                this.draggedItem = item
+                view.startDrag(dragData, shadow, null, 0)
+                linearLayout.removeView(view)
+
+                true
+            }
+        }
+
+        linearLayout.setOnDragListener { v, event ->
 //            if (event.action == DragEvent.ACTION_DRAG_LOCATION) {
-//                val existingPlaceholderViewIndex = getPlaceholderIndex()!!
-//                val ghostViewIndex = linearLayout.indexOfChild(draggedView!!)
-//
 //                val touchY = event.y
-//                val numCircles = linearLayout.childCount - 1
+//                val numCircles = dataSnapshot.count { it is Item.Placeholder
+//                        || (it is Item.Folder && !it.isGone)
+//                        || (it is Item.ColoredNumber && !it.isGone)
+//                }
 //
 //                val targetPlaceholderVisualIndex: Int = (0 until numCircles).sortedBy { index ->
 //                    val center = itemSize * index + halfItemSize
 //                    Math.abs(center - touchY)
 //                }.first()
 //
-//                val isGhostViewAffectingTargetIndex = ghostViewIndex < targetPlaceholderVisualIndex
+//                // TODO: cache this
+//                val ghostViewDataIndex = dataSnapshot.indexOfFirst {
+//                    (it is Item.Folder && it.isGone) || (it is Item.ColoredNumber && !it.isGone)
+//                }
+//
+//                val willGhostViewAffectTargetIndex = ghostViewDataIndex < targetPlaceholderVisualIndex
 //
 //                val centerOfTarget = itemSize * targetPlaceholderVisualIndex + halfItemSize
 //                val isCloseToCenter = Math.abs(centerOfTarget - touchY) < addThreshold
 //                val isAboveCenterThreshold = !isCloseToCenter && touchY < centerOfTarget
 //                val isBelowCenterThreshold = !isCloseToCenter && touchY > centerOfTarget
 //
-//                val targetPlaceholderViewIndex = when {
-//                    isGhostViewAffectingTargetIndex -> targetPlaceholderVisualIndex + 1 // account for the GONE view.
+//                val targetDataIndex = when {
+//                    willGhostViewAffectTargetIndex -> targetPlaceholderVisualIndex + 1 // account for the GONE view.
 //                    else -> targetPlaceholderVisualIndex
 //                }
-//                Log.d("findme", "computed new target placeholder view index: $targetPlaceholderViewIndex")
+//
+//                Log.d("findme", "computed new target placeholder view index: $targetDataIndex")
+//
+//                val existingPlaceholderIndex = dataSnapshot.indexOfFirst { it is Item.Placeholder }
 //
 //                val moveDir = when {
-//                    existingPlaceholderViewIndex > targetPlaceholderViewIndex -> -1
-//                    existingPlaceholderViewIndex < targetPlaceholderViewIndex -> 1
+//                    existingPlaceholderIndex > targetDataIndex -> -1
+//                    existingPlaceholderIndex < targetDataIndex -> 1
 //                    else -> 0
 //                }
-//
+////
 //                // add the placeholder
 //                if ((moveDir == 1 && isBelowCenterThreshold) || (moveDir == -1 && isAboveCenterThreshold)) {
 //                    // need to move the placeholder.
-//                    linearLayout.removeViewAt(existingPlaceholderViewIndex)
-//                    linearLayout.addView(placeholderView, targetPlaceholderViewIndex)
-//                    Log.d("findme", "new placeholder index: ${getPlaceholderIndex()}")
-//                    currentTarget?.setIsHighlighted(false)
-//                    currentTarget = null
-//                } else if (isCloseToCenter) {
-//                    val newTarget = getViewAtVisualIndex(targetPlaceholderVisualIndex, ghostViewIndex) as? ColoredNumberView
-//                    if (newTarget !== currentTarget) {
-//                        currentTarget?.setIsHighlighted(false)
-//                        currentTarget = newTarget
-//                        currentTarget?.setIsHighlighted(true)
-//                    }
+////                    linearLayout.removeViewAt(existingPlaceholderViewIndex)
+////                    linearLayout.addView(placeholderView, targetPlaceholderViewIndex)
+////                    Log.d("findme", "new placeholder index: ${getPlaceholderIndex()}")
+////                    currentTarget?.setIsHighlighted(false)
+////                    currentTarget = null
+//
+//                    val editingList = ArrayList(dataSnapshot)
+//                    editingList.removeAt(existingPlaceholderIndex)
+//                    editingList.add(targetDataIndex, Item.Placeholder)
+//                    onNewData(editingList)
 //                }
+////
+////                else if (isCloseToCenter) {
+////                    val newTarget = getViewAtVisualIndex(targetPlaceholderVisualIndex, ghostViewIndex) as? ColoredNumberView
+////                    if (newTarget !== currentTarget) {
+////                        currentTarget?.setIsHighlighted(false)
+////                        currentTarget = newTarget
+////                        currentTarget?.setIsHighlighted(true)
+////                    }
+////                }
+////
+////                val allowScrolls = (System.currentTimeMillis() - lastScrollTime) > SCROLL_THRESHOLD_MS
+////                if (allowScrolls) {
+////                    val scrollY = scrollView.scrollY
+////                    val bottomOfScrollView = scrollY + scrollView.height
+////                    val placeholderTop = targetPlaceholderVisualIndex * itemSize
+////                    val placeholderBottom = targetPlaceholderVisualIndex * itemSize + itemSize
+////
+////                    if (placeholderBottom > bottomOfScrollView || Math.abs(touchY - bottomOfScrollView) < (itemSize / 2)) {
+////                        scrollView.smoothScrollBy(0, itemSize.toInt())
+////                        lastScrollTime = System.currentTimeMillis()
+////                    } else if (placeholderTop < scrollY || Math.abs(touchY - scrollY) < (itemSize / 2)) {
+////                        scrollView.smoothScrollBy(0, -itemSize.toInt())
+////                        lastScrollTime = System.currentTimeMillis()
+////                    }
+//                } else if (event.action == DragEvent.ACTION_DRAG_ENDED) {
 //
-//                val allowScrolls = (System.currentTimeMillis() - lastScrollTime) > SCROLL_THRESHOLD_MS
-//                if (allowScrolls) {
-//                    val scrollY = scrollView.scrollY
-//                    val bottomOfScrollView = scrollY + scrollView.height
-//                    val placeholderTop = targetPlaceholderVisualIndex * itemSize
-//                    val placeholderBottom = targetPlaceholderVisualIndex * itemSize + itemSize
+////                val placeholderIndex = getPlaceholderIndex() ?: throw IllegalStateException("drop with no placeholder")
+////                val draggedItemIndex = linearLayout.indexOfChild(draggedView)
+////
+////                val currentTarget = currentTarget
+////
+////                if (currentTarget == null) {
+////                    linearLayout.removeView(placeholderView)
+////                    linearLayout.removeView(draggedView)
+////
+////                    val adjustedDropIndex =
+////                        if (draggedItemIndex < placeholderIndex) placeholderIndex - 1 else placeholderIndex
+////                    linearLayout.addView(draggedView, adjustedDropIndex)
+////
+////                    draggedView?.visibility = View.VISIBLE
+////                    draggedView = null
+////                } else {
+////                    currentTarget.setIsHighlighted(false)
+////                    val draggedNumber = (linearLayout.getChildAt(draggedItemIndex) as? ColoredNumberView)?.getColoredNumber()!!
+////                    val targetNumber = (currentTarget as? ColoredNumberView)?.getColoredNumber()!!
+////                    currentTarget.configure(targetNumber.copy(number = targetNumber.number + draggedNumber.number))
+////                    linearLayout.removeView(placeholderView)
+////                    linearLayout.removeView(draggedView)
+////                    this.currentTarget = null
+////                }
 //
-//                    if (placeholderBottom > bottomOfScrollView || Math.abs(touchY - bottomOfScrollView) < (itemSize / 2)) {
-//                        scrollView.smoothScrollBy(0, itemSize.toInt())
-//                        lastScrollTime = System.currentTimeMillis()
-//                    } else if (placeholderTop < scrollY || Math.abs(touchY - scrollY) < (itemSize / 2)) {
-//                        scrollView.smoothScrollBy(0, -itemSize.toInt())
-//                        lastScrollTime = System.currentTimeMillis()
-//                    }
-//                }
-//            } else if (event.action == DragEvent.ACTION_DRAG_ENDED) {
-//                val placeholderIndex = getPlaceholderIndex() ?: throw IllegalStateException("drop with no placeholder")
-//                val draggedItemIndex = linearLayout.indexOfChild(draggedView)
-//
-//                val currentTarget = currentTarget
-//
-//                if (currentTarget == null) {
-//                    linearLayout.removeView(placeholderView)
-//                    linearLayout.removeView(draggedView)
-//
-//                    val adjustedDropIndex =
-//                        if (draggedItemIndex < placeholderIndex) placeholderIndex - 1 else placeholderIndex
-//                    linearLayout.addView(draggedView, adjustedDropIndex)
-//
-//                    draggedView?.visibility = View.VISIBLE
-//                    draggedView = null
-//                } else {
-//                    currentTarget.setIsHighlighted(false)
-//                    val draggedNumber = (linearLayout.getChildAt(draggedItemIndex) as? ColoredNumberView)?.getColoredNumber()!!
-//                    val targetNumber = (currentTarget as? ColoredNumberView)?.getColoredNumber()!!
-//                    currentTarget.configure(targetNumber.copy(number = targetNumber.number + draggedNumber.number))
-//                    linearLayout.removeView(placeholderView)
-//                    linearLayout.removeView(draggedView)
-//                    this.currentTarget = null
-//                }
-//
-//                draggedView = null
+//                val item = draggedItem!!
+//                val draggedItemIndex = dataSnapshot.indexOfFirst { it.id == item.id }
+//                val editingList = ArrayList(dataSnapshot)
+//                editingList[draggedItemIndex] = item.copy(isGone = false)
+//                editingList.remove(Item.Placeholder)
+//                onNewData(editingList)
 //            }
-//            true
-//        }
+            true
+        }
     }
 
     private fun bindViews() {
         scrollView = findViewById(R.id.scroll_view)
         linearLayout = findViewById(R.id.linear_layout)
-    }
-
-    private fun getPlaceholderIndex(): Int? {
-        for (i in 0..linearLayout.childCount) {
-            if (linearLayout.getChildAt(i).tag == TAG_PLACEHOLDER) {
-                return i
-            }
-        }
-
-        return null
     }
 
     private fun getViewAtVisualIndex(visualIndex: Int, ghostViewIndex: Int): View {
@@ -391,10 +431,14 @@ class LinearActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val TAG_PLACEHOLDER = "placeholder"
         private const val SCROLL_THRESHOLD_MS = 250L
         private const val DISTANCE_FROM_CENTER_FOR_ADD = 0.2
         private const val NUMBER_VIEW_SIZE_DP = 64
         private const val NUMBER_VIEW_MARGIN_DP = 4
+    }
+
+    enum class Update {
+        CHANGE,
+        INSERT
     }
 }
