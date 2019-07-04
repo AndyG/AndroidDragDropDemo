@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import com.discord.androiddragdropdemo.R
+import com.discord.androiddragdropdemo.repository.ExpandedFolderRepository
 import com.discord.androiddragdropdemo.utils.dpToPx
 import io.reactivex.disposables.Disposable
 
@@ -48,9 +49,7 @@ class LinearActivity : AppCompatActivity() {
             .of(this)
             .get(ListViewModel::class.java)
             .observeListItems()
-            .subscribe { data ->
-                onNewData(data)
-            }
+            .subscribe(::onNewData)
     }
 
     override fun onDestroy() {
@@ -135,6 +134,16 @@ class LinearActivity : AppCompatActivity() {
                 }
             }
             is Item.FolderListItem -> {
+                val view = linearLayout.getChildAt(position) as NumberFolderView
+                val marginSize = dpToPx(NUMBER_VIEW_MARGIN_DP, resources)
+                view.setNumChildren(item.numChildren, itemSize, marginSize)
+                view.setOnClickListener {
+                    if (item.isOpen) {
+                        ExpandedFolderRepository.collapseFolder(item.id)
+                    } else {
+                        ExpandedFolderRepository.expandFolder(item.id)
+                    }
+                }
             }
             is Item.ColoredNumberListItem -> {
                 val view = linearLayout.getChildAt(position) as ColoredNumberView
@@ -190,7 +199,6 @@ class LinearActivity : AppCompatActivity() {
                 val layoutParams = LinearLayout.LayoutParams(numberSize, numberSize)
                 layoutParams.setMargins(marginSize.toInt())
                 view.layoutParams = layoutParams
-                view.setNumChildren(3, itemSize, marginSize)
                 return view
             }
             is Item.PlaceholderListItem -> {
