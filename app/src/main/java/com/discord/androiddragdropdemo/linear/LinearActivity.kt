@@ -1,5 +1,6 @@
 package com.discord.androiddragdropdemo.linear
 
+import android.animation.LayoutTransition
 import android.content.ClipData
 import android.content.ClipDescription
 import android.os.Bundle
@@ -129,9 +130,7 @@ class LinearActivity : AppCompatActivity() {
     }
 
     private fun updateView(position: Int) {
-        val item = dataSnapshot[position]
-
-        when (item) {
+        when (val item = dataSnapshot[position]) {
             Item.PlaceholderListItem -> {
                 val view = linearLayout.getChildAt(position)
                 if (view is NumberFolderView || view is ColoredNumberView) {
@@ -254,39 +253,7 @@ class LinearActivity : AppCompatActivity() {
                 }
             } else if (event.action == DragEvent.ACTION_DRAG_ENDED) {
                 viewModel.onDragEnded()
-//                val indexOfPlaceholder = dataSnapshot.indexOfFirst { it === Item.PlaceholderListItem }
-//                val draggedItem = draggedItem!!
-//                val dragTarget = dragTarget
-//                val editingList = ArrayList(dataSnapshot)
-//
-//                if (dragTarget != null) {
-//                    val dragTargetIndex = dataSnapshot.indexOfFirst { it.id == dragTarget.id }
-//                    val dragTargetNumber = dragTarget.coloredNumber.number
-//                    val draggedNumber = draggedItem.coloredNumber.number
-//                    val sum = dragTargetNumber + draggedNumber
-//                    val sumItem = ColoredNumber(
-//                        number = sum,
-//                        color = dragTarget.coloredNumber.color,
-//                        id = dragTarget.coloredNumber.id
-//                    )
-//                    Log.d("findme", "dragged number: $draggedNumber")
-//                    Log.d("findme", "targeted number: $dragTargetNumber")
-//                    Log.d("findme", "sum: $sum. index: $dragTargetIndex")
-//                    editingList[dragTargetIndex] = Item.ColoredNumberListItem(
-//                        coloredNumber = sumItem,
-//                        isTargeted = false,
-//                        folderId = dragTarget.folderId
-//                    )
-//                    editingList.remove(Item.PlaceholderListItem)
-//                    Log.d("findme", "newData:\n\t${editingList.joinToString("\n\t")}")
-//                } else {
-//                    editingList[indexOfPlaceholder] = draggedItem
-//                }
-//
-//                this.draggedItem = null
-//                this.dragTarget = null
-//                onNewData(editingList)
-//                linearLayout.layoutTransition = LayoutTransition()
+                linearLayout.layoutTransition = LayoutTransition()
             }
             true
         }
