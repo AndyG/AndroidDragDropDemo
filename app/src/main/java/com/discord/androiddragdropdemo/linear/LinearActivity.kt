@@ -288,10 +288,13 @@ class LinearActivity : AppCompatActivity() {
                                 editingList[oldTargetIndex] = oldTarget.copy(isTargeted = false)
                             }
 
-                            val newDragTarget = hoveredItem.copy(isTargeted = true)
-                            dragTarget = newDragTarget
-                            editingList[closestHoverTargetIndex] = newDragTarget
-                            onNewData(editingList)
+                            // don't allow targeting of items in folders.
+                            if (hoveredItem.folderId == null) {
+                                val newDragTarget = hoveredItem.copy(isTargeted = true)
+                                dragTarget = newDragTarget
+                                editingList[closestHoverTargetIndex] = newDragTarget
+                                onNewData(editingList)
+                            }
                         }
                     }
                 } else {
@@ -351,7 +354,8 @@ class LinearActivity : AppCompatActivity() {
                     Log.d("findme", "sum: $sum. index: $dragTargetIndex")
                     editingList[dragTargetIndex] = Item.ColoredNumberListItem(
                         coloredNumber = sumItem,
-                        isTargeted = false
+                        isTargeted = false,
+                        folderId = dragTarget.folderId
                     )
                     editingList.remove(Item.PlaceholderListItem)
                     Log.d("findme", "newData:\n\t${editingList.joinToString("\n\t")}")

@@ -8,5 +8,7 @@ sealed class Item(open val id: Long) {
 
     data class FolderListItem(val isOpen: Boolean, val numChildren: Int, override val id: Long) : Item(id)
 
-    data class ColoredNumberListItem(val coloredNumber: ColoredNumber, val isTargeted: Boolean = false) : Item(id = coloredNumber.id)
+    data class ColoredNumberListItem(val coloredNumber: ColoredNumber,
+                                     val folderId: Long?,
+                                     val isTargeted: Boolean = false) : Item(id = coloredNumber.id)
 }

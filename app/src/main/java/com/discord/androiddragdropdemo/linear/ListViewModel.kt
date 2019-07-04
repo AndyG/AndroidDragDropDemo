@@ -57,7 +57,8 @@ class ListViewModel : ViewModel() {
                         entry.numbers.forEach { child ->
                             val childListItem = Item.ColoredNumberListItem(
                                 coloredNumber = child,
-                                isTargeted = false
+                                isTargeted = false,
+                                folderId = entry.id
                             )
                             listItems.add(childListItem)
                         }
@@ -66,7 +67,8 @@ class ListViewModel : ViewModel() {
                 is NumbersRepository.Entry.SingletonNumber -> {
                     val listItem = Item.ColoredNumberListItem(
                         coloredNumber = entry.number,
-                        isTargeted = false
+                        isTargeted = false,
+                        folderId = null
                     )
                     listItems.add(listItem)
                 }
