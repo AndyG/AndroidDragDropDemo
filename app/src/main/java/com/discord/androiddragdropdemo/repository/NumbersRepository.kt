@@ -22,7 +22,7 @@ object NumbersRepository {
         publish()
     }
 
-    fun onNumberMoved(id: Long, belowId: Long?, folderId: Long?) {
+    fun moveNumber(id: Long, belowId: Long?, folderId: Long?) {
         assert(folderId == null)
         // Find the entry representing this number.
         val entryIndex = entries.indexOfFirst { it is Entry.SingletonNumber && it.number.id == id }
@@ -46,6 +46,23 @@ object NumbersRepository {
                 else entryIndex
 
         entries.removeAt(adjustedRemovalIndex)
+        publish()
+    }
+
+    fun joinNumber(sourceId: Long, targetId: Long) {
+        // Find the entry representing the source.
+        val sourceIndex = entries.indexOfFirst { it is Entry.SingletonNumber && it.number.id == sourceId }
+        val source = (entries[sourceIndex] as Entry.SingletonNumber).number
+
+        // Find the entry representing the target.
+        val targetIndex = entries.indexOfFirst { it is Entry.SingletonNumber && it.number.id == targetId }
+        val target = (entries[targetIndex] as Entry.SingletonNumber).number
+
+        val sum = source.number + target.number
+        val newItem = target.copy(number = sum)
+
+        entries[targetIndex] = NumbersRepository.Entry.SingletonNumber(newItem)
+        entries.removeAt(sourceIndex)
         publish()
     }
 

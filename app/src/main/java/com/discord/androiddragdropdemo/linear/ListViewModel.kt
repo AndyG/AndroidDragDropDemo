@@ -2,7 +2,6 @@ package com.discord.androiddragdropdemo.linear
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import com.discord.androiddragdropdemo.domain.ColoredNumber
 import com.discord.androiddragdropdemo.repository.ExpandedFolderRepository
 import com.discord.androiddragdropdemo.repository.NumbersRepository
 import io.reactivex.Observable
@@ -218,6 +217,7 @@ class ListViewModel : ViewModel() {
             listItems.addAll(editingList)
 
             publish()
+            NumbersRepository.joinNumber(draggedItemCapture.id, targetedItem.id)
         } else {
             editingList[placeholderIndex] = draggedItem
             val belowId =
@@ -229,7 +229,7 @@ class ListViewModel : ViewModel() {
             listItems.addAll(editingList)
 
             publish()
-            NumbersRepository.onNumberMoved(draggedItemCapture.id, belowId, folderId = null)
+            NumbersRepository.moveNumber(draggedItemCapture.id, belowId, folderId = null)
         }
     }
 
