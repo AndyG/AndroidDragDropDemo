@@ -153,9 +153,9 @@ class ListViewModel : ViewModel() {
     }
 
     private fun onNewData(repositoryData: RepositoryData) {
-        listItems.clear()
-
         val (numbers, expandedFolderIds) = repositoryData
+
+        val newListItems = ArrayList<Item>()
 
         numbers.forEach { entry ->
             when (entry) {
@@ -165,7 +165,7 @@ class ListViewModel : ViewModel() {
                         if (isOpen) entry.numbers.size
                         else 0
 
-                    listItems.add(Item.FolderListItem(isOpen = isOpen, numChildren = numChildren, id = entry.id))
+                    newListItems.add(Item.FolderListItem(isOpen = isOpen, numChildren = numChildren, id = entry.id))
 
                     if (isOpen) {
                         entry.numbers.forEach { child ->
@@ -174,7 +174,7 @@ class ListViewModel : ViewModel() {
                                 isTargeted = false,
                                 folderId = entry.id
                             )
-                            listItems.add(childListItem)
+                            newListItems.add(childListItem)
                         }
                     }
                 }
@@ -184,9 +184,14 @@ class ListViewModel : ViewModel() {
                         isTargeted = false,
                         folderId = null
                     )
-                    listItems.add(listItem)
+                    newListItems.add(listItem)
                 }
             }
+        }
+
+        if (newListItems != listItems) {
+            listItems.clear()
+            listItems.addAll(newListItems)
         }
 
         publish()
