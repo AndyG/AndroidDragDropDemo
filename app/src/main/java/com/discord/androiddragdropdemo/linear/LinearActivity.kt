@@ -23,6 +23,8 @@ import io.reactivex.disposables.Disposable
 
 class LinearActivity : AppCompatActivity() {
 
+    private lateinit var viewModel: ListViewModel
+
     private lateinit var scrollView: ScrollView
     private lateinit var linearLayout: LinearLayout
 
@@ -49,9 +51,11 @@ class LinearActivity : AppCompatActivity() {
 
         configureDragAndDrop()
 
-        disposable = ViewModelProviders
+        viewModel = ViewModelProviders
             .of(this)
             .get(ListViewModel::class.java)
+
+        disposable = viewModel
             .observeListItems()
             .subscribe(::onNewData)
     }
@@ -160,16 +164,8 @@ class LinearActivity : AppCompatActivity() {
                     val dragData = ClipData(numberStr, arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), clipDataItem)
                     val shadow = View.DragShadowBuilder(view)
 
-                    val curIndex = dataSnapshot.indexOfFirst { it.id == item.id }
-                    this.draggedItem = item
                     view.startDrag(dragData, shadow, null, 0)
-
-                    val editingList = ArrayList(dataSnapshot)
-                    editingList.apply {
-                        set(curIndex, Item.PlaceholderListItem)
-                    }
-                    onNewData(editingList)
-
+                    viewModel.onDragStarted(item)
                     true
                 }
             }
@@ -228,93 +224,22 @@ class LinearActivity : AppCompatActivity() {
                 }.first()
 
                 val existingPlaceholderIndex = dataSnapshot.indexOfFirst { it is Item.PlaceholderListItem }
-                val considerMove = closestHoverTargetIndex != existingPlaceholderIndex
+                if (existingPlaceholderIndex < 0) throw IllegalStateException("must have placeholder during drag")
 
+                val considerMove = closestHoverTargetIndex != existingPlaceholderIndex
                 if (considerMove) {
                     val centerOfTarget = itemSize * closestHoverTargetIndex + halfItemSize
                     val isCloseToCenter = Math.abs(centerOfTarget - touchY) < addThreshold
                     val isAboveCenterThreshold = !isCloseToCenter && touchY < centerOfTarget
                     val isBelowCenterThreshold = !isCloseToCenter && touchY > centerOfTarget
-
                     val isDownwardMove = closestHoverTargetIndex > existingPlaceholderIndex
 
-                    if ((isDownwardMove && isBelowCenterThreshold) || (!isDownwardMove && isAboveCenterThreshold)) {
-                        // consider moving to this position.
-                        val potentialTargetIndex =
-                            if (isBelowCenterThreshold) closestHoverTargetIndex + 1
-                            else closestHoverTargetIndex
-
-                        if (existingPlaceholderIndex == potentialTargetIndex) {
-                            // targeting the same position we're already targeting. nothing to do.
-                            return@setOnDragListener true
-                        }
-
-                        // We are definitely targeting a move to this position. Create a copy of the array to mutate.
-                        val editingList = ArrayList(dataSnapshot)
-
-                        // untarget old target.
-                        val oldTarget = dragTarget
-                        if (oldTarget != null) {
-                            val oldTargetIndex = dataSnapshot.indexOfFirst { it.id == oldTarget.id }
-                            if (oldTargetIndex < 0) {
-                                throw IllegalStateException("invalid oldTargetIndex")
-                            }
-
-                            editingList[oldTargetIndex] = oldTarget.copy(isTargeted = false)
-                            dragTarget = null
-                        }
-
-                        editingList.removeAt(existingPlaceholderIndex)
-                        // adjust for removal.
-                        val adjustedTargetIndex =
-                            if (existingPlaceholderIndex < potentialTargetIndex) potentialTargetIndex - 1
-                            else potentialTargetIndex
-
-                        editingList.add(adjustedTargetIndex, Item.PlaceholderListItem)
-                        onNewData(editingList)
+                    if ((isDownwardMove && isBelowCenterThreshold)) {
+                        viewModel.targetItem(dataSnapshot[closestHoverTargetIndex], ListViewModel.TargetType.BELOW, inFolder = false)
+                    } else if ((!isDownwardMove && isAboveCenterThreshold)) {
+                        viewModel.targetItem(dataSnapshot[closestHoverTargetIndex], ListViewModel.TargetType.ABOVE, inFolder = false)
                     } else if (isCloseToCenter) {
-                        val hoveredItem = dataSnapshot[closestHoverTargetIndex]
-                        if (hoveredItem != dragTarget && hoveredItem is Item.ColoredNumberListItem) {
-                            val editingList = ArrayList(dataSnapshot)
-
-                            // untarget old target.
-                            val oldTarget = dragTarget
-                            if (oldTarget != null) {
-                                val oldTargetIndex = dataSnapshot.indexOfFirst { it.id == oldTarget.id }
-                                if (oldTargetIndex < 0) {
-                                    throw IllegalStateException("invalid oldTargetIndex")
-                                }
-
-                                editingList[oldTargetIndex] = oldTarget.copy(isTargeted = false)
-                            }
-
-                            // don't allow targeting of items in folders.
-                            if (hoveredItem.folderId == null) {
-                                val newDragTarget = hoveredItem.copy(isTargeted = true)
-                                dragTarget = newDragTarget
-                                editingList[closestHoverTargetIndex] = newDragTarget
-                                onNewData(editingList)
-                            }
-                        }
-                    }
-                } else {
-                    val centerOfTarget = itemSize * closestHoverTargetIndex + halfItemSize
-                    val isCloseToCenter = Math.abs(centerOfTarget - touchY) < addThreshold
-
-                    if (!isCloseToCenter) {
-                        // untarget old target.
-                        val oldTarget = dragTarget
-                        if (oldTarget != null) {
-                            val oldTargetIndex = dataSnapshot.indexOfFirst { it.id == oldTarget.id }
-                            if (oldTargetIndex < 0) {
-                                throw IllegalStateException("invalid oldTargetIndex")
-                            }
-
-                            val editingList = ArrayList(dataSnapshot)
-                            editingList[oldTargetIndex] = oldTarget.copy(isTargeted = false)
-                            onNewData(editingList)
-                            dragTarget = null
-                        }
+//                        viewModel.targetItem(dataSnapshot[closestHoverTargetIndex], ListViewModel.TargetType.INSIDE, inFolder = false)
                     }
                 }
 
@@ -334,39 +259,40 @@ class LinearActivity : AppCompatActivity() {
                     }
                 }
             } else if (event.action == DragEvent.ACTION_DRAG_ENDED) {
-                val indexOfPlaceholder = dataSnapshot.indexOfFirst { it === Item.PlaceholderListItem }
-                val draggedItem = draggedItem!!
-                val dragTarget = dragTarget
-                val editingList = ArrayList(dataSnapshot)
-
-                if (dragTarget != null) {
-                    val dragTargetIndex = dataSnapshot.indexOfFirst { it.id == dragTarget.id }
-                    val dragTargetNumber = dragTarget.coloredNumber.number
-                    val draggedNumber = draggedItem.coloredNumber.number
-                    val sum = dragTargetNumber + draggedNumber
-                    val sumItem = ColoredNumber(
-                        number = sum,
-                        color = dragTarget.coloredNumber.color,
-                        id = dragTarget.coloredNumber.id
-                    )
-                    Log.d("findme", "dragged number: $draggedNumber")
-                    Log.d("findme", "targeted number: $dragTargetNumber")
-                    Log.d("findme", "sum: $sum. index: $dragTargetIndex")
-                    editingList[dragTargetIndex] = Item.ColoredNumberListItem(
-                        coloredNumber = sumItem,
-                        isTargeted = false,
-                        folderId = dragTarget.folderId
-                    )
-                    editingList.remove(Item.PlaceholderListItem)
-                    Log.d("findme", "newData:\n\t${editingList.joinToString("\n\t")}")
-                } else {
-                    editingList[indexOfPlaceholder] = draggedItem
-                }
-
-                this.draggedItem = null
-                this.dragTarget = null
-                onNewData(editingList)
-                linearLayout.layoutTransition = LayoutTransition()
+                viewModel.onDragEnded()
+//                val indexOfPlaceholder = dataSnapshot.indexOfFirst { it === Item.PlaceholderListItem }
+//                val draggedItem = draggedItem!!
+//                val dragTarget = dragTarget
+//                val editingList = ArrayList(dataSnapshot)
+//
+//                if (dragTarget != null) {
+//                    val dragTargetIndex = dataSnapshot.indexOfFirst { it.id == dragTarget.id }
+//                    val dragTargetNumber = dragTarget.coloredNumber.number
+//                    val draggedNumber = draggedItem.coloredNumber.number
+//                    val sum = dragTargetNumber + draggedNumber
+//                    val sumItem = ColoredNumber(
+//                        number = sum,
+//                        color = dragTarget.coloredNumber.color,
+//                        id = dragTarget.coloredNumber.id
+//                    )
+//                    Log.d("findme", "dragged number: $draggedNumber")
+//                    Log.d("findme", "targeted number: $dragTargetNumber")
+//                    Log.d("findme", "sum: $sum. index: $dragTargetIndex")
+//                    editingList[dragTargetIndex] = Item.ColoredNumberListItem(
+//                        coloredNumber = sumItem,
+//                        isTargeted = false,
+//                        folderId = dragTarget.folderId
+//                    )
+//                    editingList.remove(Item.PlaceholderListItem)
+//                    Log.d("findme", "newData:\n\t${editingList.joinToString("\n\t")}")
+//                } else {
+//                    editingList[indexOfPlaceholder] = draggedItem
+//                }
+//
+//                this.draggedItem = null
+//                this.dragTarget = null
+//                onNewData(editingList)
+//                linearLayout.layoutTransition = LayoutTransition()
             }
             true
         }
