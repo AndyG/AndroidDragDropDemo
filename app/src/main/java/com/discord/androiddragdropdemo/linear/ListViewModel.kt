@@ -198,6 +198,7 @@ class ListViewModel : ViewModel() {
     }
 
     fun onDragEnded() {
+        val draggedItemCapture = draggedItem as Item.ColoredNumberListItem
         val editingList = ArrayList(listItems)
 
         val placeholderIndex = editingList.indexOf(Item.PlaceholderListItem)
@@ -205,23 +206,31 @@ class ListViewModel : ViewModel() {
         val targetItemIndex = editingList.indexOfFirst { it is Item.ColoredNumberListItem && it.isTargeted }
 
         if (targetItemIndex > -1) {
-            val draggedItem = draggedItem as Item.ColoredNumberListItem
             val targetedItem = listItems[targetItemIndex] as Item.ColoredNumberListItem
-            val sum = draggedItem.coloredNumber.number + targetedItem.coloredNumber.number
+            val sum = draggedItemCapture.coloredNumber.number + targetedItem.coloredNumber.number
             val sumColoredNumber = targetedItem.coloredNumber.copy(number = sum)
             val sumListItem = targetedItem.copy(coloredNumber = sumColoredNumber, isTargeted = false)
             editingList[targetItemIndex] = sumListItem
             editingList.remove(Item.PlaceholderListItem)
+
+            draggedItem = null
+            listItems.clear()
+            listItems.addAll(editingList)
+
+            publish()
         } else {
             editingList[placeholderIndex] = draggedItem
+            val belowId =
+                if (placeholderIndex == 0) null
+                else editingList[placeholderIndex - 1].id
+
+            draggedItem = null
+            listItems.clear()
+            listItems.addAll(editingList)
+
+            publish()
+            NumbersRepository.onNumberMoved(draggedItemCapture.id, belowId, folderId = null)
         }
-
-        draggedItem = null
-        listItems.clear()
-        listItems.addAll(editingList)
-
-        // TODO: notify stores
-        publish()
     }
 
     private fun publish() {

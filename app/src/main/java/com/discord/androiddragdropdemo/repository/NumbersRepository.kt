@@ -12,18 +12,45 @@ object NumbersRepository {
         data class SingletonNumber(val number: ColoredNumber) : Entry()
     }
 
-    private var numbers: MutableList<Entry> = ArrayList()
-    private val numbersSubject = BehaviorSubject.create<List<Entry>>()
+    private var entries: MutableList<Entry> = ArrayList()
+    private val entriesSubject = BehaviorSubject.create<List<Entry>>()
 
-    fun observeNumbers(): Observable<List<Entry>> = numbersSubject
+    fun observeNumbers(): Observable<List<Entry>> = entriesSubject
 
     fun init() {
-        numbers = generateData(30).toMutableList()
+        entries = generateData(30).toMutableList()
+        publish()
+    }
+
+    fun onNumberMoved(id: Long, belowId: Long?, folderId: Long?) {
+        assert(folderId == null)
+        // Find the entry representing this number.
+        val entryIndex = entries.indexOfFirst { it is Entry.SingletonNumber && it.number.id == id }
+        val entry = entries[entryIndex]
+
+        // Find the index we want to move it below.
+        val belowIndex = belowId?.let {
+            entries.indexOfFirst { entry ->
+                entry is Entry.SingletonNumber && entry.number.id == belowId
+                        || entry is Entry.Folder && entry.id == belowId
+            }
+        } ?: -1
+
+        // This is a bit cheeky, it also offsets the -1 if belowId was null.
+        val insertionIndex = belowIndex + 1
+        entries.add(insertionIndex, entry)
+
+        // Remove the old entry.
+        val adjustedRemovalIndex =
+                if (insertionIndex <= entryIndex) entryIndex + 1
+                else entryIndex
+
+        entries.removeAt(adjustedRemovalIndex)
         publish()
     }
 
     private fun publish() {
-        numbersSubject.onNext(numbers)
+        entriesSubject.onNext(entries)
     }
 
     private fun generateData(count: Int): List<Entry> {
