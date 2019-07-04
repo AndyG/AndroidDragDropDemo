@@ -6,6 +6,7 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
 import com.discord.androiddragdropdemo.R
+import com.discord.androiddragdropdemo.domain.ColoredNumber
 
 class ColoredNumberView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -18,19 +19,12 @@ class ColoredNumberView @JvmOverloads constructor(
     private val textView: TextView = findViewById(R.id.colored_number_text)
     private val highlight: View = findViewById(R.id.colored_number_highlight)
 
-    private var coloredNumber: Item.ColoredNumber? = null
-
-    fun getColoredNumber(): Item.ColoredNumber? {
-        return this.coloredNumber
-    }
-
-    fun configure(coloredNumber: Item.ColoredNumber) {
-        this.coloredNumber = coloredNumber
+    fun configure(coloredNumber: ColoredNumber) {
         this.textView.text = coloredNumber.number.toString()
         setBackgroundResource(when (coloredNumber.color) {
-            Item.ColoredNumber.Color.RED -> R.drawable.circle_red
-            Item.ColoredNumber.Color.BLUE -> R.drawable.circle_blue
-            Item.ColoredNumber.Color.GREEN -> R.drawable.circle_green
+            ColoredNumber.Color.RED -> R.drawable.circle_red
+            ColoredNumber.Color.BLUE -> R.drawable.circle_blue
+            ColoredNumber.Color.GREEN -> R.drawable.circle_green
         })
     }
 

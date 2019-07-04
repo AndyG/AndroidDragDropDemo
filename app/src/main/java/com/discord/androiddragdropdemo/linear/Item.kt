@@ -1,12 +1,14 @@
 package com.discord.androiddragdropdemo.linear
 
+import com.discord.androiddragdropdemo.domain.ColoredNumber
+
 sealed class Item(open val id: Long) {
 
-    object Placeholder : Item(-1L)
+    object PlaceholderListItem : Item(-1L)
 
-    data class Folder(val isOpen: Boolean, val numChildren: Int, override val id: Long) : Item(id)
+    data class FolderListItem(val isOpen: Boolean, val numChildren: Int, override val id: Long) : Item(id)
 
-    data class ColoredNumber(val number: Int, val color: Color, override val id: Long, val isTargeted: Boolean = false) : Item(id) {
+    data class ColoredNumberListItem(val coloredNumber: ColoredNumber, val isTargeted: Boolean = false) : Item(id = coloredNumber.id) {
         enum class Color {
             RED,
             BLUE,
