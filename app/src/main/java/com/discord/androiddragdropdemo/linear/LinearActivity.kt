@@ -1,10 +1,8 @@
 package com.discord.androiddragdropdemo.linear
 
-import android.animation.LayoutTransition
 import android.content.ClipData
 import android.content.ClipDescription
 import android.os.Bundle
-import android.util.Log
 import android.view.DragEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -16,7 +14,6 @@ import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import com.discord.androiddragdropdemo.R
-import com.discord.androiddragdropdemo.domain.ColoredNumber
 import com.discord.androiddragdropdemo.repository.ExpandedFolderRepository
 import com.discord.androiddragdropdemo.utils.dpToPx
 import io.reactivex.disposables.Disposable
@@ -207,9 +204,6 @@ class LinearActivity : AppCompatActivity() {
         }
     }
 
-    private var draggedItem: Item.ColoredNumberListItem? = null
-    private var dragTarget: Item.ColoredNumberListItem? = null
-
     private fun configureDragAndDrop() {
         linearLayout.setOnDragListener { _, event ->
             if (event.action == DragEvent.ACTION_DRAG_STARTED) {
@@ -239,7 +233,7 @@ class LinearActivity : AppCompatActivity() {
                     } else if ((!isDownwardMove && isAboveCenterThreshold)) {
                         viewModel.targetItem(dataSnapshot[closestHoverTargetIndex], ListViewModel.TargetType.ABOVE, inFolder = false)
                     } else if (isCloseToCenter) {
-//                        viewModel.targetItem(dataSnapshot[closestHoverTargetIndex], ListViewModel.TargetType.INSIDE, inFolder = false)
+                        viewModel.targetItem(dataSnapshot[closestHoverTargetIndex], ListViewModel.TargetType.INSIDE, inFolder = false)
                     }
                 }
 

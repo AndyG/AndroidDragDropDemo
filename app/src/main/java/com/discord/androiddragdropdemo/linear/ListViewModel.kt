@@ -1,6 +1,8 @@
 package com.discord.androiddragdropdemo.linear
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
+import com.discord.androiddragdropdemo.domain.ColoredNumber
 import com.discord.androiddragdropdemo.repository.ExpandedFolderRepository
 import com.discord.androiddragdropdemo.repository.NumbersRepository
 import io.reactivex.Observable
@@ -44,7 +46,7 @@ class ListViewModel : ViewModel() {
         draggedItem = item
 
         val editingList = ArrayList(listItems)
-        val itemIndex = editingList.indexOf(item)
+        val itemIndex = editingList.indexOfFirst { it.id == item.id }
 
         editingList.apply {
             set(itemIndex, Item.PlaceholderListItem)
@@ -56,6 +58,7 @@ class ListViewModel : ViewModel() {
     }
 
     fun targetItem(item: Item, targetType: TargetType, inFolder: Boolean) {
+        Log.d("findme", "targeting item: $item. type: $targetType")
         when (targetType) {
             TargetType.BELOW -> {
                 val editingList = ArrayList(listItems)
@@ -70,7 +73,7 @@ class ListViewModel : ViewModel() {
                     }
                 }
 
-                val targetIndex = editingList.indexOf(item)
+                val targetIndex = editingList.indexOfFirst { it.id == item.id }
                 val existingPlaceholderIndex = editingList.indexOf(Item.PlaceholderListItem)
                 editingList.removeAt(existingPlaceholderIndex)
                 // adjust for removal.
@@ -97,7 +100,7 @@ class ListViewModel : ViewModel() {
                     }
                 }
 
-                val targetIndex = editingList.indexOf(item)
+                val targetIndex = editingList.indexOfFirst { it.id == item.id }
                 val existingPlaceholderIndex = editingList.indexOf(Item.PlaceholderListItem)
                 editingList.removeAt(existingPlaceholderIndex)
                 // adjust for removal.
@@ -111,14 +114,14 @@ class ListViewModel : ViewModel() {
                 publish()
             }
             TargetType.INSIDE -> {
-                val editingList = ArrayList(listItems)
-
-                val oldTargetIndex = editingList.indexOfFirst { it is Item.ColoredNumberListItem && it.isTargeted }
-                val targetIndex = editingList.indexOf(item)
+                val oldTargetIndex = listItems.indexOfFirst { it is Item.ColoredNumberListItem && it.isTargeted }
+                val targetIndex = listItems.indexOfFirst { it.id == item.id }
 
                 if (oldTargetIndex == targetIndex) {
                     return
                 }
+
+                val editingList = ArrayList(listItems)
 
                 // untarget old target.
                 if (oldTargetIndex > -1) {
@@ -191,12 +194,28 @@ class ListViewModel : ViewModel() {
 
     fun onDragEnded() {
         val editingList = ArrayList(listItems)
-        val placeholderIndex = editingList.indexOf(Item.PlaceholderListItem)
-        editingList[placeholderIndex] = draggedItem
-        draggedItem = null
 
+        val placeholderIndex = editingList.indexOf(Item.PlaceholderListItem)
+
+        val targetItemIndex = editingList.indexOfFirst { it is Item.ColoredNumberListItem && it.isTargeted }
+
+        if (targetItemIndex > -1) {
+            val draggedItem = draggedItem as Item.ColoredNumberListItem
+            val targetedItem = listItems[targetItemIndex] as Item.ColoredNumberListItem
+            val sum = draggedItem.coloredNumber.number + targetedItem.coloredNumber.number
+            val sumColoredNumber = targetedItem.coloredNumber.copy(number = sum)
+            val sumListItem = targetedItem.copy(coloredNumber = sumColoredNumber, isTargeted = false)
+            editingList[targetItemIndex] = sumListItem
+            editingList.remove(Item.PlaceholderListItem)
+        } else {
+            editingList[placeholderIndex] = draggedItem
+        }
+
+        draggedItem = null
         listItems.clear()
         listItems.addAll(editingList)
+
+        // TODO: notify stores
         publish()
     }
 
