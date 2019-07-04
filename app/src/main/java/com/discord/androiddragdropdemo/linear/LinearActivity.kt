@@ -16,9 +16,6 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import com.discord.androiddragdropdemo.R
 import com.discord.androiddragdropdemo.utils.dpToPx
-import io.reactivex.Observable
-import io.reactivex.android.schedulers.AndroidSchedulers
-import java.util.concurrent.TimeUnit
 
 class LinearActivity : AppCompatActivity() {
 
@@ -30,8 +27,6 @@ class LinearActivity : AppCompatActivity() {
     private var addThreshold: Float = 0f
 
     private var lastScrollTime: Long = 0L
-
-    private var currentTarget: ColoredNumberView? = null
 
     private var dataSnapshot : List<Item> = emptyList()
 
@@ -46,27 +41,20 @@ class LinearActivity : AppCompatActivity() {
         halfItemSize = itemSize / 2
         addThreshold = (itemSize * DISTANCE_FROM_CENTER_FOR_ADD).toFloat()
 
-        val data = generateData(5)
+        val data = generateData(50)
         onNewData(data)
 
         configureDragAndDrop()
     }
 
-    @SuppressLint("UseSparseArrays")
     private fun onNewData(newData: List<Item>) {
-        val oldData = this.dataSnapshot
-        Log.d("findme", "oldData: \n${oldData.joinToString("\n")}")
-        Log.d("findme", "newData: \n${newData.joinToString("\n")}")
-
-        val cb = object : DiffUtil.Callback() {
+        val diffUtilCallback = object : DiffUtil.Callback() {
             override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                val result = oldData[oldItemPosition].id == newData[newItemPosition].id
-//                Log.d("findme", "areItemsTheSame: $oldItemPosition -- $newItemPosition -- $result")
-                return result
+                return dataSnapshot[oldItemPosition].id == newData[newItemPosition].id
             }
 
             override fun getOldListSize(): Int {
-                return oldData.size
+                return dataSnapshot.size
             }
 
             override fun getNewListSize(): Int {
@@ -74,61 +62,52 @@ class LinearActivity : AppCompatActivity() {
             }
 
             override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                val result = oldData[oldItemPosition] == newData[newItemPosition]
-//                Log.d("findme", "areContentsTheSame: $oldItemPosition -- $newItemPosition -- $result")
-                return result
+                return dataSnapshot[oldItemPosition] == newData[newItemPosition]
             }
         }
 
-        // TODO: use a sparse array for this maybe?
-        val updates = ArrayList<Update?>(oldData.size)
-        for (i in 0 until oldData.size) {
+        // TODO: use a sparse array here for perf.
+        val updates = ArrayList<Update?>(dataSnapshot.size)
+        for (i in 0 until dataSnapshot.size) {
             updates.add(null)
         }
 
-        val result = DiffUtil.calculateDiff(cb, false)
-        this.dataSnapshot = newData.toMutableList()
+        val result = DiffUtil.calculateDiff(diffUtilCallback, false)
+        this.dataSnapshot = newData
 
         result.dispatchUpdatesTo(object : ListUpdateCallback {
             override fun onChanged(position: Int, count: Int, payload: Any?) {
-                Log.d("findme", "changed. position: $position -- count: $count")
                 for (i in 0 until count) {
                     updates[position + i] = Update.CHANGE
                 }
-
-                Log.d("findme", "post change updates: \n\t${updates.joinToString("\n\t")}")
             }
 
             override fun onMoved(fromPosition: Int, toPosition: Int) {
-                throw IllegalStateException("moves are unsupported")
+                throw IllegalStateException("moves are unsupported for now since we're not using animations anyway.")
             }
 
             override fun onInserted(position: Int, count: Int) {
-                Log.d("findme", "inserted. position: $position -- count: $count")
-
                 for (i in 0 until count) {
                     updates.add(position, Update.INSERT)
                 }
-
-                Log.d("findme", "post insert updates: \n\t${updates.joinToString("\n\t")}")
             }
 
             override fun onRemoved(position: Int, count: Int) {
-                Log.d("findme", "removed. position: $position -- count: $count")
                 for (i in 0 until count) {
                     // this shifts the updates appropriately.
                     updates.removeAt(position)
                     removeView(position)
                 }
-                Log.d("findme", "post remove updates: \n\t${updates.joinToString("\n\t")}")
             }
         })
 
-        Log.d("findme", "computed updates: \n\t${updates.joinToString("\n\t")}")
         updates.forEachIndexed { position, update ->
             when (update) {
                 null -> { }
-                Update.INSERT -> insertView(position)
+                Update.INSERT -> {
+                    insertView(position)
+                    updateView(position)
+                }
                 Update.CHANGE -> updateView(position)
             }
         }
@@ -136,7 +115,6 @@ class LinearActivity : AppCompatActivity() {
 
     private fun updateView(position: Int) {
         val item = dataSnapshot[position]
-        Log.d("findme", "updateView: $position -- item: $item")
 
         when (item) {
             Item.Placeholder -> {
@@ -146,46 +124,52 @@ class LinearActivity : AppCompatActivity() {
                 }
             }
             is Item.Folder -> {
-                val view = linearLayout.getChildAt(position) as NumberFolderView
-                if (item.isGone) {
-                    view.visibility = View.GONE
-                } else {
-                    view.visibility = View.VISIBLE
-                }
             }
             is Item.ColoredNumber -> {
                 val view = linearLayout.getChildAt(position) as ColoredNumberView
-                if (item.isGone) {
-                    view.visibility = View.GONE
-                } else {
-                    view.visibility = View.VISIBLE
+                view.configure(item)
+                view.setIsHighlighted(item.isTargeted)
+
+                view.setOnLongClickListener {
+                    val numberStr = item.number.toString()
+                    val clipDataItem = ClipData.Item(numberStr)
+                    val dragData = ClipData(numberStr, arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), clipDataItem)
+                    val shadow = View.DragShadowBuilder(view)
+
+                    val curIndex = dataSnapshot.indexOfFirst { it.id == item.id }
+                    this.draggedItem = item
+                    view.startDrag(dragData, shadow, null, 0)
+
+                    val editingList = ArrayList(dataSnapshot)
+                    editingList.apply {
+                        set(curIndex, Item.Placeholder)
+                    }
+                    onNewData(editingList)
+
+                    true
                 }
             }
         }
     }
 
     private fun insertView(position: Int) {
-        Log.d("findme", "insertView. position: $position -- item: ${dataSnapshot[position]}")
         val view = createView(position)
-        val item = dataSnapshot[position]
-//        view.setOnClickListener { onItemClicked(item.id) }
         linearLayout.addView(view, position)
     }
 
     private fun removeView(position: Int) {
-        Log.d("findme", "removeView. position: $position")
         linearLayout.removeViewAt(position)
     }
 
     private fun createView(index: Int): View {
-        when (val item = dataSnapshot[index]) {
+        when (dataSnapshot[index]) {
             is Item.ColoredNumber -> {
                 val view = ColoredNumberView(context = this)
-                view.configure(item)
                 val numberSize = dpToPx(NUMBER_VIEW_SIZE_DP, resources).toInt()
                 val layoutParams = LinearLayout.LayoutParams(numberSize, numberSize)
                 layoutParams.setMargins(dpToPx(NUMBER_VIEW_MARGIN_DP, resources).toInt())
                 view.layoutParams = layoutParams
+
                 return view
             }
             is Item.Folder -> {
@@ -205,147 +189,153 @@ class LinearActivity : AppCompatActivity() {
     }
 
     private var draggedItem: Item.ColoredNumber? = null
+    private var dragTarget: Item.ColoredNumber? = null
 
     private fun configureDragAndDrop() {
-        for (i in 0 until linearLayout.childCount) {
-            val view = linearLayout.getChildAt(i) as? ColoredNumberView ?: continue
-
-            view.setOnLongClickListener {
-                val item = view.getColoredNumber()!!
-
-                val numberStr = item.number.toString()
-                val clipDataItem = ClipData.Item(numberStr)
-                val dragData = ClipData(numberStr, arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), clipDataItem)
-                val shadow = View.DragShadowBuilder(view)
-
-                val curIndex = linearLayout.indexOfChild(view)
-                val editingList = ArrayList(dataSnapshot)
-                editingList.apply {
-                    set(curIndex, item.copy(isGone = true))
-                    add(curIndex, Item.Placeholder)
-                }
-                onNewData(editingList)
-
-                this.draggedItem = item
-                view.startDrag(dragData, shadow, null, 0)
-                linearLayout.removeView(view)
-
-                true
-            }
-        }
-
         linearLayout.setOnDragListener { v, event ->
-//            if (event.action == DragEvent.ACTION_DRAG_LOCATION) {
-//                val touchY = event.y
-//                val numCircles = dataSnapshot.count { it is Item.Placeholder
-//                        || (it is Item.Folder && !it.isGone)
-//                        || (it is Item.ColoredNumber && !it.isGone)
-//                }
-//
-//                val targetPlaceholderVisualIndex: Int = (0 until numCircles).sortedBy { index ->
-//                    val center = itemSize * index + halfItemSize
-//                    Math.abs(center - touchY)
-//                }.first()
-//
-//                // TODO: cache this
-//                val ghostViewDataIndex = dataSnapshot.indexOfFirst {
-//                    (it is Item.Folder && it.isGone) || (it is Item.ColoredNumber && !it.isGone)
-//                }
-//
-//                val willGhostViewAffectTargetIndex = ghostViewDataIndex < targetPlaceholderVisualIndex
-//
-//                val centerOfTarget = itemSize * targetPlaceholderVisualIndex + halfItemSize
-//                val isCloseToCenter = Math.abs(centerOfTarget - touchY) < addThreshold
-//                val isAboveCenterThreshold = !isCloseToCenter && touchY < centerOfTarget
-//                val isBelowCenterThreshold = !isCloseToCenter && touchY > centerOfTarget
-//
-//                val targetDataIndex = when {
-//                    willGhostViewAffectTargetIndex -> targetPlaceholderVisualIndex + 1 // account for the GONE view.
-//                    else -> targetPlaceholderVisualIndex
-//                }
-//
-//                Log.d("findme", "computed new target placeholder view index: $targetDataIndex")
-//
-//                val existingPlaceholderIndex = dataSnapshot.indexOfFirst { it is Item.Placeholder }
-//
-//                val moveDir = when {
-//                    existingPlaceholderIndex > targetDataIndex -> -1
-//                    existingPlaceholderIndex < targetDataIndex -> 1
-//                    else -> 0
-//                }
-////
-//                // add the placeholder
-//                if ((moveDir == 1 && isBelowCenterThreshold) || (moveDir == -1 && isAboveCenterThreshold)) {
-//                    // need to move the placeholder.
-////                    linearLayout.removeViewAt(existingPlaceholderViewIndex)
-////                    linearLayout.addView(placeholderView, targetPlaceholderViewIndex)
-////                    Log.d("findme", "new placeholder index: ${getPlaceholderIndex()}")
-////                    currentTarget?.setIsHighlighted(false)
-////                    currentTarget = null
-//
-//                    val editingList = ArrayList(dataSnapshot)
-//                    editingList.removeAt(existingPlaceholderIndex)
-//                    editingList.add(targetDataIndex, Item.Placeholder)
-//                    onNewData(editingList)
-//                }
-////
-////                else if (isCloseToCenter) {
-////                    val newTarget = getViewAtVisualIndex(targetPlaceholderVisualIndex, ghostViewIndex) as? ColoredNumberView
-////                    if (newTarget !== currentTarget) {
-////                        currentTarget?.setIsHighlighted(false)
-////                        currentTarget = newTarget
-////                        currentTarget?.setIsHighlighted(true)
-////                    }
-////                }
-////
-////                val allowScrolls = (System.currentTimeMillis() - lastScrollTime) > SCROLL_THRESHOLD_MS
-////                if (allowScrolls) {
-////                    val scrollY = scrollView.scrollY
-////                    val bottomOfScrollView = scrollY + scrollView.height
-////                    val placeholderTop = targetPlaceholderVisualIndex * itemSize
-////                    val placeholderBottom = targetPlaceholderVisualIndex * itemSize + itemSize
-////
-////                    if (placeholderBottom > bottomOfScrollView || Math.abs(touchY - bottomOfScrollView) < (itemSize / 2)) {
-////                        scrollView.smoothScrollBy(0, itemSize.toInt())
-////                        lastScrollTime = System.currentTimeMillis()
-////                    } else if (placeholderTop < scrollY || Math.abs(touchY - scrollY) < (itemSize / 2)) {
-////                        scrollView.smoothScrollBy(0, -itemSize.toInt())
-////                        lastScrollTime = System.currentTimeMillis()
-////                    }
-//                } else if (event.action == DragEvent.ACTION_DRAG_ENDED) {
-//
-////                val placeholderIndex = getPlaceholderIndex() ?: throw IllegalStateException("drop with no placeholder")
-////                val draggedItemIndex = linearLayout.indexOfChild(draggedView)
-////
-////                val currentTarget = currentTarget
-////
-////                if (currentTarget == null) {
-////                    linearLayout.removeView(placeholderView)
-////                    linearLayout.removeView(draggedView)
-////
-////                    val adjustedDropIndex =
-////                        if (draggedItemIndex < placeholderIndex) placeholderIndex - 1 else placeholderIndex
-////                    linearLayout.addView(draggedView, adjustedDropIndex)
-////
-////                    draggedView?.visibility = View.VISIBLE
-////                    draggedView = null
-////                } else {
-////                    currentTarget.setIsHighlighted(false)
-////                    val draggedNumber = (linearLayout.getChildAt(draggedItemIndex) as? ColoredNumberView)?.getColoredNumber()!!
-////                    val targetNumber = (currentTarget as? ColoredNumberView)?.getColoredNumber()!!
-////                    currentTarget.configure(targetNumber.copy(number = targetNumber.number + draggedNumber.number))
-////                    linearLayout.removeView(placeholderView)
-////                    linearLayout.removeView(draggedView)
-////                    this.currentTarget = null
-////                }
-//
-//                val item = draggedItem!!
-//                val draggedItemIndex = dataSnapshot.indexOfFirst { it.id == item.id }
-//                val editingList = ArrayList(dataSnapshot)
-//                editingList[draggedItemIndex] = item.copy(isGone = false)
-//                editingList.remove(Item.Placeholder)
-//                onNewData(editingList)
-//            }
+            if (event.action == DragEvent.ACTION_DRAG_LOCATION) {
+                val touchY = event.y
+                val numCircles = dataSnapshot.size
+
+                val closestHoverTargetIndex: Int = (0 until numCircles).sortedBy { index ->
+                    val center = itemSize * index + halfItemSize
+                    Math.abs(center - touchY)
+                }.first()
+
+                val existingPlaceholderIndex = dataSnapshot.indexOfFirst { it is Item.Placeholder }
+                val considerMove = closestHoverTargetIndex != existingPlaceholderIndex
+
+                if (considerMove) {
+                    val centerOfTarget = itemSize * closestHoverTargetIndex + halfItemSize
+                    val isCloseToCenter = Math.abs(centerOfTarget - touchY) < addThreshold
+                    val isAboveCenterThreshold = !isCloseToCenter && touchY < centerOfTarget
+                    val isBelowCenterThreshold = !isCloseToCenter && touchY > centerOfTarget
+
+                    val isDownwardMove = closestHoverTargetIndex > existingPlaceholderIndex
+
+                    if ((isDownwardMove && isBelowCenterThreshold) || (!isDownwardMove && isAboveCenterThreshold)) {
+                        // consider moving to this position.
+                        val potentialTargetIndex =
+                            if (isBelowCenterThreshold) closestHoverTargetIndex + 1
+                            else closestHoverTargetIndex
+
+                        if (existingPlaceholderIndex == potentialTargetIndex) {
+                            // targeting the same position we're already targeting. nothing to do.
+                            return@setOnDragListener true
+                        }
+
+                        // We are definitely targeting a move to this position. Create a copy of the array to mutate.
+                        val editingList = ArrayList(dataSnapshot)
+
+                        // untarget old target.
+                        val oldTarget = dragTarget
+                        if (oldTarget != null) {
+                            val oldTargetIndex = dataSnapshot.indexOfFirst { it.id == oldTarget.id }
+                            if (oldTargetIndex < 0) {
+                                throw IllegalStateException("invalid oldTargetIndex")
+                            }
+
+                            editingList[oldTargetIndex] = oldTarget.copy(isTargeted = false)
+                            dragTarget = null
+                        }
+
+                        editingList.removeAt(existingPlaceholderIndex)
+                        // adjust for removal.
+                        val adjustedTargetIndex =
+                            if (existingPlaceholderIndex < potentialTargetIndex) potentialTargetIndex - 1
+                            else potentialTargetIndex
+
+                        editingList.add(adjustedTargetIndex, Item.Placeholder)
+                        onNewData(editingList)
+                    } else if (isCloseToCenter) {
+                        val hoveredItem = dataSnapshot[closestHoverTargetIndex]
+                        if (hoveredItem != dragTarget && hoveredItem is Item.ColoredNumber) {
+                            val editingList = ArrayList(dataSnapshot)
+
+                            // untarget old target.
+                            val oldTarget = dragTarget
+                            if (oldTarget != null) {
+                                val oldTargetIndex = dataSnapshot.indexOfFirst { it.id == oldTarget.id }
+                                if (oldTargetIndex < 0) {
+                                    throw IllegalStateException("invalid oldTargetIndex")
+                                }
+
+                                editingList[oldTargetIndex] = oldTarget.copy(isTargeted = false)
+                            }
+
+                            val newDragTarget = hoveredItem.copy(isTargeted = true)
+                            dragTarget = newDragTarget
+                            editingList[closestHoverTargetIndex] = newDragTarget
+                            onNewData(editingList)
+                        }
+                    }
+                } else {
+                    val centerOfTarget = itemSize * closestHoverTargetIndex + halfItemSize
+                    val isCloseToCenter = Math.abs(centerOfTarget - touchY) < addThreshold
+
+                    if (!isCloseToCenter) {
+                        // untarget old target.
+                        val oldTarget = dragTarget
+                        if (oldTarget != null) {
+                            val oldTargetIndex = dataSnapshot.indexOfFirst { it.id == oldTarget.id }
+                            if (oldTargetIndex < 0) {
+                                throw IllegalStateException("invalid oldTargetIndex")
+                            }
+
+                            val editingList = ArrayList(dataSnapshot)
+                            editingList[oldTargetIndex] = oldTarget.copy(isTargeted = false)
+                            onNewData(editingList)
+                            dragTarget = null
+                        }
+                    }
+                }
+
+                val allowScrolls = (System.currentTimeMillis() - lastScrollTime) > SCROLL_THRESHOLD_MS
+                if (allowScrolls) {
+                    val scrollY = scrollView.scrollY
+                    val bottomOfScrollView = scrollY + scrollView.height
+                    val placeholderTop = existingPlaceholderIndex * itemSize
+                    val placeholderBottom = existingPlaceholderIndex * itemSize + itemSize
+
+                    if (placeholderBottom > bottomOfScrollView || Math.abs(touchY - bottomOfScrollView) < (itemSize / 2)) {
+                        scrollView.smoothScrollBy(0, itemSize.toInt())
+                        lastScrollTime = System.currentTimeMillis()
+                    } else if (placeholderTop < scrollY || Math.abs(touchY - scrollY) < (itemSize / 2)) {
+                        scrollView.smoothScrollBy(0, -itemSize.toInt())
+                        lastScrollTime = System.currentTimeMillis()
+                    }
+                }
+            } else if (event.action == DragEvent.ACTION_DRAG_ENDED) {
+                val indexOfPlaceholder = dataSnapshot.indexOfFirst { it === Item.Placeholder }
+                val draggedItem = draggedItem!!
+                val dragTarget = dragTarget
+                val editingList = ArrayList(dataSnapshot)
+
+                if (dragTarget != null) {
+                    val dragTargetIndex = dataSnapshot.indexOfFirst { it.id == dragTarget.id }
+                    val dragTargetNumber = dragTarget.number
+                    val draggedNumber = draggedItem.number
+                    val sum = dragTargetNumber + draggedNumber
+                    val sumItem = Item.ColoredNumber(
+                        number = sum,
+                        color = dragTarget.color,
+                        id = dragTarget.id,
+                        isTargeted = false
+                    )
+                    Log.d("findme", "dragged number: $draggedNumber")
+                    Log.d("findme", "targeted number: $dragTargetNumber")
+                    Log.d("findme", "sum: $sum. index: $dragTargetIndex")
+                    editingList[dragTargetIndex] = sumItem
+                    editingList.remove(Item.Placeholder)
+                    Log.d("findme", "newData:\n\t${editingList.joinToString("\n\t")}")
+                } else {
+                    editingList[indexOfPlaceholder] = draggedItem
+                }
+
+                this.draggedItem = null
+                this.dragTarget = null
+                onNewData(editingList)
+            }
             true
         }
     }
@@ -355,65 +345,10 @@ class LinearActivity : AppCompatActivity() {
         linearLayout = findViewById(R.id.linear_layout)
     }
 
-    private fun getViewAtVisualIndex(visualIndex: Int, ghostViewIndex: Int): View {
-        return if (ghostViewIndex <= visualIndex) {
-            linearLayout.getChildAt(visualIndex + 1)
-        } else {
-            linearLayout.getChildAt(visualIndex)
-        }
-    }
-
-    private fun onItemClicked(itemId: Long) {
-        if (itemId == -1L) {
-            // the placeholder was clicked
-            return
-        }
-
-        var itemPosition = -1
-        var existingPlaceholderPosition = -1
-
-        val newData = ArrayList(dataSnapshot)
-        newData.forEachIndexed { index, item ->
-            if (item is Item.Folder) {
-                newData[index] = item.copy(isGone = false)
-            } else if (item is Item.ColoredNumber) {
-                newData[index] = item.copy(isGone = false)
-            }
-
-            if (item.id == itemId) {
-                itemPosition = index
-            }
-
-            if (item.id == -1L) {
-                existingPlaceholderPosition = index
-            }
-        }
-
-        val item = newData[itemPosition]
-
-        newData[itemPosition] = when (item) {
-            Item.Placeholder -> throw IllegalStateException("what?")
-            is Item.Folder -> item.copy(isGone = true)
-            is Item.ColoredNumber -> item.copy(isGone = true)
-        }
-
-        var insertionIndex = itemPosition
-        // remove any old placeholders.
-        if (existingPlaceholderPosition != -1) {
-            newData.removeAt(existingPlaceholderPosition)
-            if (existingPlaceholderPosition < itemPosition) {
-                insertionIndex--
-            }
-        }
-
-        newData.add(insertionIndex, Item.Placeholder)
-        onNewData(newData)
-    }
-
     private fun generateData(count: Int): List<Item> {
-        return (0..count).map {
+        return (1..count).map {
             if (false && it % 10 == 0) {
-                Item.Folder(isOpen = true, numChildren = 3, isGone = false, id = it.toLong())
+                Item.Folder(isOpen = true, numChildren = 3, id = it.toLong())
             } else {
                 Item.ColoredNumber(
                     number = it,
@@ -423,8 +358,7 @@ class LinearActivity : AppCompatActivity() {
                         2 -> Item.ColoredNumber.Color.BLUE
                         else -> throw IllegalStateException("unexpected color")
                     },
-                    id = it.toLong(),
-                    isGone = false
+                    id = it.toLong()
                 )
             }
         }
@@ -432,7 +366,7 @@ class LinearActivity : AppCompatActivity() {
 
     companion object {
         private const val SCROLL_THRESHOLD_MS = 250L
-        private const val DISTANCE_FROM_CENTER_FOR_ADD = 0.2
+        private const val DISTANCE_FROM_CENTER_FOR_ADD = 0.2f
         private const val NUMBER_VIEW_SIZE_DP = 64
         private const val NUMBER_VIEW_MARGIN_DP = 4
     }
