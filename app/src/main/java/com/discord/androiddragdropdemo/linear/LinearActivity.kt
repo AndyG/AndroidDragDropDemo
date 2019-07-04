@@ -228,13 +228,28 @@ class LinearActivity : AppCompatActivity() {
                     val isDownwardMove = closestHoverTargetIndex > existingPlaceholderIndex
 
                     if ((isDownwardMove && isBelowCenterThreshold)) {
-                        viewModel.targetItem(dataSnapshot[closestHoverTargetIndex], ListViewModel.TargetType.BELOW, inFolder = false)
+                        viewModel.targetItem(
+                            dataSnapshot[closestHoverTargetIndex],
+                            ListViewModel.TargetType.BELOW,
+                            inFolder = false
+                        )
                     } else if ((!isDownwardMove && isAboveCenterThreshold)) {
-                        viewModel.targetItem(dataSnapshot[closestHoverTargetIndex], ListViewModel.TargetType.ABOVE, inFolder = false)
+                        viewModel.targetItem(
+                            dataSnapshot[closestHoverTargetIndex],
+                            ListViewModel.TargetType.ABOVE,
+                            inFolder = false
+                        )
                     } else if (isCloseToCenter) {
-                        viewModel.targetItem(dataSnapshot[closestHoverTargetIndex], ListViewModel.TargetType.INSIDE, inFolder = false)
+                        viewModel.targetItem(
+                            dataSnapshot[closestHoverTargetIndex],
+                            ListViewModel.TargetType.INSIDE,
+                            inFolder = false
+                        )
                     }
+                } else {
+                    viewModel.ensureNoTarget()
                 }
+
 
                 val allowScrolls = (System.currentTimeMillis() - lastScrollTime) > SCROLL_THRESHOLD_MS
                 if (allowScrolls) {

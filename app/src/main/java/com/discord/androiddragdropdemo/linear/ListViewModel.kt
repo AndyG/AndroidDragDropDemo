@@ -19,6 +19,7 @@ class ListViewModel : ViewModel() {
     private val disposable: Disposable
 
     private var draggedItem: Item? = null
+    private var targetedIndex: Int? = null
 
     private data class RepositoryData(
         val numbers: List<NumbersRepository.Entry>,
@@ -63,13 +64,16 @@ class ListViewModel : ViewModel() {
                 val editingList = ArrayList(listItems)
 
                 // untarget old target.
-                val oldTargetIndex = editingList.indexOfFirst { it is Item.ColoredNumberListItem && it.isTargeted }
+                val oldTargetIndex = targetedIndex ?: -1
                 if (oldTargetIndex > -1) {
                     val oldTarget = editingList[oldTargetIndex]
                     editingList[oldTargetIndex] = when (oldTarget) {
                         is Item.ColoredNumberListItem -> oldTarget.copy(isTargeted = false)
+                        is Item.FolderListItem -> oldTarget.copy(isTargeted = false)
                         else -> TODO("unsupported targeting of other item types")
                     }
+
+                    targetedIndex = null
                 }
 
                 val targetIndex = editingList.indexOfFirst { it.id == item.id }
@@ -90,13 +94,16 @@ class ListViewModel : ViewModel() {
                 val editingList = ArrayList(listItems)
 
                 // untarget old target.
-                val oldTargetIndex = editingList.indexOfFirst { it is Item.ColoredNumberListItem && it.isTargeted }
+                val oldTargetIndex = targetedIndex ?: -1
                 if (oldTargetIndex > -1) {
                     val oldTarget = editingList[oldTargetIndex]
                     editingList[oldTargetIndex] = when (oldTarget) {
                         is Item.ColoredNumberListItem -> oldTarget.copy(isTargeted = false)
+                        is Item.FolderListItem -> oldTarget.copy(isTargeted = false)
                         else -> TODO("unsupported targeting of other item types")
                     }
+
+                    targetedIndex = null
                 }
 
                 val targetIndex = editingList.indexOfFirst { it.id == item.id }
@@ -113,12 +120,14 @@ class ListViewModel : ViewModel() {
                 publish()
             }
             TargetType.INSIDE -> {
-                val oldTargetIndex = listItems.indexOfFirst { it is Item.ColoredNumberListItem && it.isTargeted }
+                val oldTargetIndex = targetedIndex ?: -1
                 val targetIndex = listItems.indexOfFirst { it.id == item.id }
 
                 if (oldTargetIndex == targetIndex) {
                     return
                 }
+
+                targetedIndex = targetIndex
 
                 val editingList = ArrayList(listItems)
 
@@ -127,6 +136,7 @@ class ListViewModel : ViewModel() {
                     val oldTarget = editingList[oldTargetIndex]
                     editingList[oldTargetIndex] = when (oldTarget) {
                         is Item.ColoredNumberListItem -> oldTarget.copy(isTargeted = false)
+                        is Item.FolderListItem -> oldTarget.copy(isTargeted = false)
                         else -> TODO("unsupported targeting of other item types")
                     }
                 }
@@ -136,12 +146,37 @@ class ListViewModel : ViewModel() {
                     && item.folderId == null // no targeting numbers in folders
                 ) {
                     editingList[targetIndex] = item.copy(isTargeted = true)
+                } else if (item is Item.FolderListItem
+                    && !item.isTargeted
+                    && !item.isOpen) {
+                    editingList[targetIndex] = item.copy(isTargeted = true)
                 }
 
                 listItems.clear()
                 listItems.addAll(editingList)
                 publish()
             }
+        }
+    }
+
+    fun ensureNoTarget() {
+        val oldTargetIndex = targetedIndex ?: -1
+
+        // untarget old target.
+        if (oldTargetIndex > -1) {
+            val editingList = ArrayList(listItems)
+            val oldTarget = listItems[oldTargetIndex]
+            editingList[oldTargetIndex] = when (oldTarget) {
+                is Item.ColoredNumberListItem -> oldTarget.copy(isTargeted = false)
+                is Item.FolderListItem -> oldTarget.copy(isTargeted = false)
+                else -> TODO("unsupported targeting of other item types")
+            }
+
+            targetedIndex = null
+
+            listItems.clear()
+            listItems.addAll(editingList)
+            publish()
         }
     }
 
@@ -164,7 +199,7 @@ class ListViewModel : ViewModel() {
                         if (isOpen) entry.numbers.size
                         else 0
 
-                    newListItems.add(Item.FolderListItem(isOpen = isOpen, numChildren = numChildren, id = entry.id))
+                    newListItems.add(Item.FolderListItem(isOpen = isOpen, numChildren = numChildren, id = entry.id, isTargeted = false))
 
                     if (isOpen) {
                         entry.numbers.forEach { child ->
@@ -202,7 +237,7 @@ class ListViewModel : ViewModel() {
 
         val placeholderIndex = editingList.indexOf(Item.PlaceholderListItem)
 
-        val targetItemIndex = editingList.indexOfFirst { it is Item.ColoredNumberListItem && it.isTargeted }
+        val targetItemIndex = targetedIndex ?: -1
 
         if (targetItemIndex > -1) {
             val targetedItem = listItems[targetItemIndex] as Item.ColoredNumberListItem
@@ -231,6 +266,8 @@ class ListViewModel : ViewModel() {
             publish()
             NumbersRepository.moveNumber(draggedItemCapture.id, belowId, folderId = null)
         }
+
+        targetedIndex = null
     }
 
     private fun publish() {
