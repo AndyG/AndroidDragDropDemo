@@ -156,13 +156,15 @@ class LinearActivity : AppCompatActivity() {
                 view.setIsHighlighted(item.isTargeted)
 
                 view.setOnLongClickListener {
-                    val numberStr = item.coloredNumber.number.toString()
-                    val clipDataItem = ClipData.Item(numberStr)
-                    val dragData = ClipData(numberStr, arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), clipDataItem)
-                    val shadow = View.DragShadowBuilder(view)
+                    if (item.folderId == null) {
+                        val numberStr = item.coloredNumber.number.toString()
+                        val clipDataItem = ClipData.Item(numberStr)
+                        val dragData = ClipData(numberStr, arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), clipDataItem)
+                        val shadow = View.DragShadowBuilder(view)
 
-                    view.startDrag(dragData, shadow, null, 0)
-                    viewModel.onDragStarted(item)
+                        view.startDrag(dragData, shadow, null, 0)
+                        viewModel.onDragStarted(item)
+                    }
                     true
                 }
             }

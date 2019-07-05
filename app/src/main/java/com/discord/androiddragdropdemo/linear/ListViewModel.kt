@@ -271,9 +271,25 @@ class ListViewModel : ViewModel() {
             }
         } else {
             editingList[placeholderIndex] = draggedItem
-            val belowId =
-                if (placeholderIndex == 0) null
-                else editingList[placeholderIndex - 1].id
+
+            val belowId: Long?
+
+            if (placeholderIndex == 0) {
+                belowId = null
+            } else {
+                val aboveItem = editingList[placeholderIndex - 1]
+                belowId = if (aboveItem is Item.FolderListItem) {
+                    aboveItem.id
+                } else if (aboveItem is Item.ColoredNumberListItem) {
+                    if (draggedItemCapture.folderId == null) {
+                        aboveItem.folderId
+                    } else {
+                        throw IllegalStateException("can't drag from within folders.")
+                    }
+                } else {
+                    throw IllegalArgumentException("unexpected above item")
+                }
+            }
 
             draggedItem = null
             listItems.clear()
