@@ -2,6 +2,7 @@ package com.discord.androiddragdropdemo.linear
 
 import android.graphics.Rect
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -65,8 +66,10 @@ class RecyclerActivity : AppCompatActivity() {
 
         recyclerView.layoutManager = layoutManager
         recyclerView.adapter = recyclerAdapter
+        recyclerView.itemAnimator = null
         val folderDecoration = FolderItemDecoration(
-            ContextCompat.getDrawable(recyclerView.context, R.drawable.ring_red)!!
+            drawableNoChildren = ContextCompat.getDrawable(recyclerView.context, R.drawable.circle_gray)!!,
+            drawableWithChildren = ContextCompat.getDrawable(recyclerView.context, R.drawable.rounded_rectangle_gray)!!
         )
 
         recyclerView.addItemDecoration(folderDecoration)
@@ -134,7 +137,6 @@ class RecyclerActivity : AppCompatActivity() {
 
             diffResult.dispatchUpdatesTo(this)
         }
-        fun getData(): List<Item> = data
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             return when (viewType) {
@@ -192,7 +194,7 @@ class RecyclerActivity : AppCompatActivity() {
 
             private var numChildren = 0
 
-            fun getNumChildren() = numChildren
+            fun getNumChildren() = numChildren.also { Log.d("findme", "returning numChildren: $numChildren") }
 
             fun configure(item: Item.FolderListItem) {
                 itemView as DecoratedNumberFolderView

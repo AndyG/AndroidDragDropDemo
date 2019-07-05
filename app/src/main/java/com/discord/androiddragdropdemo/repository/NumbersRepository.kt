@@ -18,7 +18,7 @@ object NumbersRepository {
     fun observeNumbers(): Observable<List<Entry>> = entriesSubject
 
     fun init() {
-        entries = generateData(30).toMutableList()
+        entries = generateData(50).toMutableList()
         publish()
     }
 
