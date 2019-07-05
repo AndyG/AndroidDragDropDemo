@@ -185,8 +185,6 @@ class ListViewModel : ViewModel() {
                     return
                 }
 
-                targetedIndex = targetIndex
-
                 val editingList = ArrayList(listItems)
 
                 // untarget old target.
@@ -203,10 +201,12 @@ class ListViewModel : ViewModel() {
                     && !item.isTargeted // if this is already targeted, forget about it
                     && item.folderId == null // no targeting numbers in folders
                 ) {
+                    targetedIndex = targetIndex
                     editingList[targetIndex] = item.copy(isTargeted = true)
                 } else if (item is Item.FolderListItem
                     && !item.isTargeted
                     && !item.isOpen) {
+                    targetedIndex = targetIndex
                     editingList[targetIndex] = item.copy(isTargeted = true)
                 }
 
