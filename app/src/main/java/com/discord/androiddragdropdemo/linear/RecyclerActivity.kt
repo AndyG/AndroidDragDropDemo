@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -64,6 +65,11 @@ class RecyclerActivity : AppCompatActivity() {
 
         recyclerView.layoutManager = layoutManager
         recyclerView.adapter = recyclerAdapter
+        val folderDecoration = FolderItemDecoration(
+            ContextCompat.getDrawable(recyclerView.context, R.drawable.ring_red)!!
+        )
+
+        recyclerView.addItemDecoration(folderDecoration)
 
         val itemTouchHelper = ItemTouchHelper(DragAndDropTouchCallback(recyclerAdapter))
         itemTouchHelper.attachToRecyclerView(recyclerView)
@@ -94,7 +100,7 @@ class RecyclerActivity : AppCompatActivity() {
         private const val NUMBER_VIEW_MARGIN_DP = 4
     }
 
-    private class Adapter(
+    class Adapter(
         private val onOperationRequested: (Operation) -> Unit,
         private val layoutManager: LinearLayoutManager
     ) : RecyclerView.Adapter<RecyclerView.ViewHolder>(), DragAndDropTouchCallback.Adapter {
@@ -128,6 +134,7 @@ class RecyclerActivity : AppCompatActivity() {
 
             diffResult.dispatchUpdatesTo(this)
         }
+        fun getData(): List<Item> = data
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             return when (viewType) {
@@ -138,7 +145,7 @@ class RecyclerActivity : AppCompatActivity() {
                 VIEW_TYPE_FOLDER -> {
                     val view = LayoutInflater
                         .from(parent.context)
-                        .inflate(R.layout.folder_list_item, parent, false) as NumberFolderView
+                        .inflate(R.layout.decorated_folder_list_item, parent, false) as DecoratedNumberFolderView
                     FolderViewHolder(view)
                 }
                 VIEW_TYPE_NUMBER -> {
@@ -181,10 +188,14 @@ class RecyclerActivity : AppCompatActivity() {
 
         private class PlaceholderViewHolder(view: View) : RecyclerView.ViewHolder(view)
 
-        private class FolderViewHolder(view: NumberFolderView) : RecyclerView.ViewHolder(view) {
+        class FolderViewHolder(view: DecoratedNumberFolderView) : RecyclerView.ViewHolder(view) {
+
+            private var numChildren = 0
+
+            fun getNumChildren() = numChildren
 
             fun configure(item: Item.FolderListItem) {
-                itemView as NumberFolderView
+                itemView as DecoratedNumberFolderView
 
                 itemView.setIsHighlighted(isHighlighted = item.isTargeted)
 
@@ -195,6 +206,8 @@ class RecyclerActivity : AppCompatActivity() {
                         ExpandedFolderRepository.expandFolder(item.id)
                     }
                 }
+
+                numChildren = item.numChildren
             }
         }
 

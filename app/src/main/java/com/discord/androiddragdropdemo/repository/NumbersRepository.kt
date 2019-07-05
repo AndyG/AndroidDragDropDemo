@@ -112,7 +112,7 @@ object NumbersRepository {
 
     private fun generateData(count: Int): List<Entry> {
         return (1..count).map { index ->
-            if (false && index % 5 == 0) {
+            if (index % 5 == 0) {
                 val coloredNumbers = (0..2).map { it + 100 + index }.map(::generateColoredNumber)
                 NumbersRepository.Entry.Folder(
                     id = generateId(),

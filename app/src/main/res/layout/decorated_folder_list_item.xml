@@ -1,0 +1,5 @@
+<com.discord.androiddragdropdemo.linear.DecoratedNumberFolderView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_margin="4dp"
+        xmlns:android="http://schemas.android.com/apk/res/android"/>
