@@ -57,7 +57,7 @@ class ListViewModel : ViewModel() {
         publish()
     }
 
-    fun targetItem(item: Item, targetType: TargetType, inFolder: Boolean) {
+    fun targetItem(item: Item, targetType: TargetType) {
         Log.d("findme", "targeting item: $item. type: $targetType")
         when (targetType) {
             TargetType.BELOW -> {

@@ -231,20 +231,17 @@ class LinearActivity : AppCompatActivity() {
                     if ((isDownwardMove && isBelowCenterThreshold)) {
                         viewModel.targetItem(
                             dataSnapshot[closestHoverTargetIndex],
-                            ListViewModel.TargetType.BELOW,
-                            inFolder = false
+                            ListViewModel.TargetType.BELOW
                         )
                     } else if ((!isDownwardMove && isAboveCenterThreshold)) {
                         viewModel.targetItem(
                             dataSnapshot[closestHoverTargetIndex],
-                            ListViewModel.TargetType.ABOVE,
-                            inFolder = false
+                            ListViewModel.TargetType.ABOVE
                         )
                     } else if (isCloseToCenter) {
                         viewModel.targetItem(
                             dataSnapshot[closestHoverTargetIndex],
-                            ListViewModel.TargetType.INSIDE,
-                            inFolder = false
+                            ListViewModel.TargetType.INSIDE
                         )
                     }
                 } else {
