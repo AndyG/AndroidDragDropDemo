@@ -15,6 +15,8 @@ class RecyclerViewModel : ViewModel() {
     private val listItems = ArrayList<Item>()
     private val listItemsSubject = BehaviorSubject.create<List<Item>>()
 
+    private var curTargetPosition: Int? = null
+
     private val disposable: Disposable
 
     private data class RepositoryData(
@@ -40,25 +42,37 @@ class RecyclerViewModel : ViewModel() {
 
     fun move(fromPosition: Int, toPosition: Int) {
         val editingList = ArrayList(listItems)
-        swapItems(editingList, fromPosition, toPosition)
+        untargetCurrentTarget(editingList)
+        val item = editingList.removeAt(fromPosition)
+
+        val adjustedToPosition = when {
+            fromPosition < toPosition -> toPosition - 1
+            else -> toPosition
+        }
+
+        editingList.add(adjustedToPosition, item)
         listItems.clear()
         listItems.addAll(editingList)
         publish()
     }
 
-    private fun <T> swapItems(list: MutableList<T>, fromPos: Int, toPos: Int) {
-        if (Math.abs(fromPos - toPos) == 1) {
-            val temp = list[fromPos]
-            list[fromPos] = list[toPos]
-            list[toPos] = temp
-        } else {
-            val isUp = fromPos - toPos < 0
-            val item = list[fromPos]
+    fun target(fromPosition: Int, targetPosition: Int) {
+        val editingList = ArrayList(listItems)
+        untargetCurrentTarget(editingList)
+        val targetedItem = editingList[targetPosition] as Item.ColoredNumberListItem
+        editingList[targetPosition] = targetedItem.copy(isTargeted = true)
+        curTargetPosition = targetPosition
+        listItems.clear()
+        listItems.addAll(editingList)
+        publish()
+    }
 
-            list.removeAt(fromPos)
-
-            val newInsertionIndex = if (isUp) toPos else toPos - 1
-            list.add(newInsertionIndex, item)
+    private fun untargetCurrentTarget(editingList: MutableList<Item>) {
+        val curTargetPosition = this.curTargetPosition
+        if (curTargetPosition != null) {
+            val targetedItem = editingList[curTargetPosition] as Item.ColoredNumberListItem
+            editingList[curTargetPosition] = targetedItem.copy(isTargeted = false)
+            this.curTargetPosition = null
         }
     }
 

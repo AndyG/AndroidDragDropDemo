@@ -74,7 +74,10 @@ class RecyclerActivity : AppCompatActivity() {
             is Adapter.Operation.Move -> {
                 viewModel.move(operation.fromPosition, operation.toPosition)
             }
-        }
+            is Adapter.Operation.Target -> {
+                viewModel.target(operation.sourcePosition, operation.targetPosition)
+            }
+        }.javaClass // force exhaustive
     }
 
     private fun onNewData(newData: List<Item>) {
@@ -230,10 +233,14 @@ class RecyclerActivity : AppCompatActivity() {
             target: RecyclerView.ViewHolder
         ): Boolean {
             when (val operation = curComputedOperation) {
-               is Operation.Move -> {
-                   onOperationRequested(operation)
-                   return true
-               }
+                is Operation.Move -> {
+                    onOperationRequested(operation)
+                    return true
+                }
+                is Operation.Target -> {
+                    onOperationRequested(operation)
+                    return true
+                }
             }
 
             return false
@@ -265,17 +272,24 @@ class RecyclerActivity : AppCompatActivity() {
             layoutManager.getTransformedBoundingBox(target.itemView, false, boundingBoxRect)
             val targetCenterY = boundingBoxRect.centerY()
 
+            val itemHeight = boundingBoxRect.height()
+            val isCloseToCenter = Math.abs(selectedCenterY - targetCenterY) < (itemHeight * CENTER_THRESHOLD)
+
             if (target is NumberViewHolder) {
-                val isMovingUp = selected.adapterPosition > target.adapterPosition
-                val operation: Operation?
-                if (isMovingUp && selectedCenterY < targetCenterY) {
-                    operation = Operation.Move(selected.adapterPosition, target.adapterPosition)
-                } else if (!isMovingUp && selectedCenterY > targetCenterY) {
-                    operation = Operation.Move(selected.adapterPosition, target.adapterPosition)
+                if (isCloseToCenter) {
+                    curComputedOperation = Operation.Target(selected.adapterPosition, target.adapterPosition)
                 } else {
-                    operation = null
+                    val isMovingUp = selected.adapterPosition > target.adapterPosition
+                    val operation: Operation?
+                    if (isMovingUp && selectedCenterY < targetCenterY) {
+                        operation = Operation.Move(selected.adapterPosition, target.adapterPosition)
+                    } else if (!isMovingUp && selectedCenterY > targetCenterY) {
+                        operation = Operation.Move(selected.adapterPosition, target.adapterPosition + 1)
+                    } else {
+                        operation = null
+                    }
+                    curComputedOperation = operation
                 }
-                curComputedOperation = operation
             }
 
             return target
@@ -285,10 +299,13 @@ class RecyclerActivity : AppCompatActivity() {
             private const val VIEW_TYPE_PLACEHOLDER = 0
             private const val VIEW_TYPE_FOLDER = 1
             private const val VIEW_TYPE_NUMBER = 2
+
+            private const val CENTER_THRESHOLD = 0.2f
         }
 
         sealed class Operation {
             data class Move(val fromPosition: Int, val toPosition: Int) : Operation()
+            data class Target(val sourcePosition: Int, val targetPosition: Int) : Operation()
         }
     }
 }
