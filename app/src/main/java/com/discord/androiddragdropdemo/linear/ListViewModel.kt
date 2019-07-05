@@ -351,7 +351,7 @@ class ListViewModel : ViewModel() {
                     is Item.FolderListItem -> aboveItem.id
                     is Item.ColoredNumberListItem -> {
                         if (isMovingIntoFolder) aboveItem.id
-                        else aboveItem.folderId
+                        else aboveItem.folderId ?: aboveItem.id
                     }
                     else -> throw IllegalArgumentException("unexpected above item")
                 }
