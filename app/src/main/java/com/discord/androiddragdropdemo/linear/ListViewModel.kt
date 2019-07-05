@@ -281,11 +281,7 @@ class ListViewModel : ViewModel() {
                 belowId = if (aboveItem is Item.FolderListItem) {
                     aboveItem.id
                 } else if (aboveItem is Item.ColoredNumberListItem) {
-                    if (draggedItemCapture.folderId == null) {
-                        aboveItem.folderId
-                    } else {
-                        throw IllegalStateException("can't drag from within folders.")
-                    }
+                    aboveItem.folderId ?: aboveItem.id
                 } else {
                     throw IllegalArgumentException("unexpected above item")
                 }
