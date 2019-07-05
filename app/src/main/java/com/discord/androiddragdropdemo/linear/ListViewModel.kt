@@ -22,6 +22,8 @@ class ListViewModel : ViewModel() {
     private var draggedItem: Item? = null
     private var targetedIndex: Int? = null
 
+    private var placeholderFolderId: Long? = null
+
     private data class RepositoryData(
         val numbers: List<NumbersRepository.Entry>,
         val expandedFolderIds: Set<Long>
@@ -59,7 +61,9 @@ class ListViewModel : ViewModel() {
     }
 
     fun targetItem(item: Item, targetType: TargetType) {
-        Log.d("findme", "targeting item: $item. type: $targetType")
+        val existingPlaceholderIndex = listItems.indexOfFirst { it.id == Item.PLACEHOLDER_ID }
+        val oldPlaceholderFolderId = this.placeholderFolderId
+
         when (targetType) {
             TargetType.BELOW -> {
                 val editingList = ArrayList(listItems)
@@ -78,9 +82,7 @@ class ListViewModel : ViewModel() {
                 }
 
                 val targetIndex = editingList.indexOfFirst { it.id == item.id }
-                val existingPlaceholderIndex = editingList.indexOfFirst { it.id == Item.PLACEHOLDER_ID }
-                val targetItem = editingList[targetIndex]
-                val placeholderFolderId = when(targetItem) {
+                val newPlaceholderFolderId = when(val targetItem = editingList[targetIndex]) {
                     is Item.ColoredNumberListItem -> targetItem.folderId // todo: allow not inserting in folder
                     is Item.FolderListItem -> {
                         if (targetItem.isOpen) {
@@ -99,7 +101,25 @@ class ListViewModel : ViewModel() {
                     else targetIndex
 
                 // it's a BELOW target, so add 1.
-                editingList.add(adjustedTargetIndex + 1, Item.PlaceholderListItem(placeholderFolderId))
+                editingList.add(adjustedTargetIndex + 1, Item.PlaceholderListItem(newPlaceholderFolderId))
+
+                if (newPlaceholderFolderId != oldPlaceholderFolderId) {
+                    if (oldPlaceholderFolderId != null) {
+                        val oldFolderItemIndex = editingList
+                            .indexOfFirst { it.id == oldPlaceholderFolderId }
+                        val oldFolderItem = editingList[oldFolderItemIndex] as Item.FolderListItem
+                        editingList[oldFolderItemIndex] = oldFolderItem.copy(numChildren = oldFolderItem.numChildren - 1)
+                    }
+
+                    if (newPlaceholderFolderId != null) {
+                        val newFolderItemIndex = editingList
+                            .indexOfFirst { it.id == newPlaceholderFolderId }
+                        val newFolderItem = editingList[newFolderItemIndex] as Item.FolderListItem
+                        editingList[newFolderItemIndex] = newFolderItem.copy(numChildren = newFolderItem.numChildren + 1)
+                    }
+                }
+
+                this.placeholderFolderId = newPlaceholderFolderId
                 listItems.clear()
                 listItems.addAll(editingList)
                 publish()
@@ -122,20 +142,37 @@ class ListViewModel : ViewModel() {
 
                 val targetIndex = editingList.indexOfFirst { it.id == item.id }
                 val targetItem = editingList[targetIndex]
-                val folderId = when (targetItem) {
+                val newPlaceholderFolderId = when (targetItem) {
                     is Item.PlaceholderListItem -> throw IllegalStateException("wut")
                     is Item.FolderListItem -> null
                     is Item.ColoredNumberListItem -> targetItem.folderId
                 }
 
-                val existingPlaceholderIndex = editingList.indexOfFirst { it.id == Item.PLACEHOLDER_ID }
                 editingList.removeAt(existingPlaceholderIndex)
                 // adjust for removal.
                 val adjustedTargetIndex =
                     if (existingPlaceholderIndex < targetIndex) targetIndex - 1
                     else targetIndex
 
-                editingList.add(adjustedTargetIndex, Item.PlaceholderListItem(folderId))
+                editingList.add(adjustedTargetIndex, Item.PlaceholderListItem(newPlaceholderFolderId))
+
+                if (newPlaceholderFolderId != oldPlaceholderFolderId) {
+                    if (oldPlaceholderFolderId != null) {
+                        val oldFolderItemIndex = editingList
+                            .indexOfFirst { it.id == oldPlaceholderFolderId }
+                        val oldFolderItem = editingList[oldFolderItemIndex] as Item.FolderListItem
+                        editingList[oldFolderItemIndex] = oldFolderItem.copy(numChildren = oldFolderItem.numChildren - 1)
+                    }
+
+                    if (newPlaceholderFolderId != null) {
+                        val newFolderItemIndex = editingList
+                            .indexOfFirst { it.id == newPlaceholderFolderId }
+                        val newFolderItem = editingList[newFolderItemIndex] as Item.FolderListItem
+                        editingList[newFolderItemIndex] = newFolderItem.copy(numChildren = newFolderItem.numChildren + 1)
+                    }
+                }
+
+                this.placeholderFolderId = newPlaceholderFolderId
                 listItems.clear()
                 listItems.addAll(editingList)
                 publish()
@@ -273,9 +310,12 @@ class ListViewModel : ViewModel() {
                     editingList[targetItemIndex] = sumListItem
                     editingList.removeAt(placeholderIndex)
 
-                    draggedItem = null
                     listItems.clear()
                     listItems.addAll(editingList)
+
+                    draggedItem = null
+                    placeholderFolderId = null
+                    targetedIndex = null
 
                     publish()
                     NumbersRepository.joinNumber(draggedItemCapture.id, targetedItem.id)
@@ -285,9 +325,12 @@ class ListViewModel : ViewModel() {
                     editingList.removeAll { it.id == draggedItemCapture.id }
                     editingList.removeAt(placeholderIndex)
 
-                    draggedItem = null
                     listItems.clear()
                     listItems.addAll(editingList)
+
+                    draggedItem = null
+                    placeholderFolderId = null
+                    targetedIndex = null
 
                     publish()
                     NumbersRepository.addNumberToFolder(draggedItemCapture.id, targetedItem.id, belowId = null)
@@ -310,15 +353,16 @@ class ListViewModel : ViewModel() {
                 }
             }
 
-            draggedItem = null
             listItems.clear()
             listItems.addAll(editingList)
 
             publish()
+
+            draggedItem = null
+            placeholderFolderId = null
+            targetedIndex = null
             NumbersRepository.moveNumber(draggedItemCapture.id, belowId, folderId = null)
         }
-
-        targetedIndex = null
     }
 
     private fun publish() {
