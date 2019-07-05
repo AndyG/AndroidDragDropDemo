@@ -23,30 +23,49 @@ object NumbersRepository {
     }
 
     fun moveNumber(id: Long, belowId: Long?, folderId: Long?) {
-        assert(folderId == null)
         // Find the entry representing this number.
         val entryIndex = entries.indexOfFirst { it is Entry.SingletonNumber && it.number.id == id }
-        val entry = entries[entryIndex]
+        val movedEntry = entries[entryIndex] as Entry.SingletonNumber
 
-        // Find the index we want to move it below.
-        val belowIndex = belowId?.let {
-            entries.indexOfFirst { entry ->
-                entry is Entry.SingletonNumber && entry.number.id == belowId
-                        || entry is Entry.Folder && entry.id == belowId
-            }
-        } ?: -1
+        if (folderId == null) {
+            // Find the index we want to move it below.
+            val belowIndex = belowId?.let {
+                entries.indexOfFirst { entry ->
+                    entry is Entry.SingletonNumber && entry.number.id == belowId
+                            || entry is Entry.Folder && entry.id == belowId
+                }
+            } ?: -1
 
-        // This is a bit cheeky, it also offsets the -1 if belowId was null.
-        val insertionIndex = belowIndex + 1
-        entries.add(insertionIndex, entry)
+            // This is a bit cheeky, it also offsets the -1 if belowId was null.
+            val insertionIndex = belowIndex + 1
+            entries.add(insertionIndex, movedEntry)
 
-        // Remove the old entry.
-        val adjustedRemovalIndex =
+            // Remove the old entry.
+            val adjustedRemovalIndex =
                 if (insertionIndex <= entryIndex) entryIndex + 1
                 else entryIndex
 
-        entries.removeAt(adjustedRemovalIndex)
-        publish()
+            entries.removeAt(adjustedRemovalIndex)
+            publish()
+        } else {
+            val folderIndex = entries.indexOfFirst { entry ->
+                entry is Entry.Folder && entry.id == folderId
+            }
+            val folder = entries[folderIndex] as Entry.Folder
+
+            val belowIndex = folder.numbers.indexOfFirst { it.id == belowId }
+            // This is a bit cheeky, it also offsets the -1 if belowId was null.
+            val insertionIndex = belowIndex + 1
+
+            val newNumbers = ArrayList(folder.numbers)
+            newNumbers.add(insertionIndex, movedEntry.number)
+            val newFolder = folder.copy(numbers = newNumbers)
+            entries[folderIndex] = newFolder
+
+            // Remove the old entry.
+            entries.removeAt(entryIndex)
+            publish()
+        }
     }
 
     fun joinNumber(sourceId: Long, targetId: Long) {

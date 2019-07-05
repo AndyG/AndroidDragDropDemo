@@ -342,16 +342,22 @@ class ListViewModel : ViewModel() {
 
             val belowId: Long?
 
+            val isMovingIntoFolder = this.placeholderFolderId != null
             if (placeholderIndex == 0) {
                 belowId = null
             } else {
                 val aboveItem = editingList[placeholderIndex - 1]
                 belowId = when (aboveItem) {
                     is Item.FolderListItem -> aboveItem.id
-                    is Item.ColoredNumberListItem -> aboveItem.folderId ?: aboveItem.id
+                    is Item.ColoredNumberListItem -> {
+                        if (isMovingIntoFolder) aboveItem.id
+                        else aboveItem.folderId
+                    }
                     else -> throw IllegalArgumentException("unexpected above item")
                 }
             }
+
+            val folderId = this.placeholderFolderId
 
             listItems.clear()
             listItems.addAll(editingList)
@@ -361,7 +367,7 @@ class ListViewModel : ViewModel() {
             draggedItem = null
             placeholderFolderId = null
             targetedIndex = null
-            NumbersRepository.moveNumber(draggedItemCapture.id, belowId, folderId = null)
+            NumbersRepository.moveNumber(draggedItemCapture.id, belowId, folderId = folderId)
         }
     }
 
