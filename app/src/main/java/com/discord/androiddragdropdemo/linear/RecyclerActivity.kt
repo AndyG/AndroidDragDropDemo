@@ -1,5 +1,6 @@
 package com.discord.androiddragdropdemo.linear
 
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -7,9 +8,11 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.discord.androiddragdropdemo.R
+import com.discord.androiddragdropdemo.recycler.DragAndDropTouchCallback
 import com.discord.androiddragdropdemo.repository.ExpandedFolderRepository
 import com.discord.androiddragdropdemo.utils.dpToPx
 import io.reactivex.disposables.Disposable
@@ -55,10 +58,23 @@ class RecyclerActivity : AppCompatActivity() {
     }
 
     private fun configureRecycler() {
-        recyclerAdapter = Adapter()
+        val layoutManager = LinearLayoutManager(recyclerView.context, RecyclerView.VERTICAL, false)
+        recyclerAdapter = Adapter(::onOperation, layoutManager)
         recyclerAdapter.setHasStableIds(true)
-        recyclerView.layoutManager = LinearLayoutManager(recyclerView.context, RecyclerView.VERTICAL, false)
+
+        recyclerView.layoutManager = layoutManager
         recyclerView.adapter = recyclerAdapter
+
+        val itemTouchHelper = ItemTouchHelper(DragAndDropTouchCallback(recyclerAdapter))
+        itemTouchHelper.attachToRecyclerView(recyclerView)
+    }
+
+    private fun onOperation(operation: Adapter.Operation) {
+        when (operation) {
+            is Adapter.Operation.Move -> {
+                viewModel.move(operation.fromPosition, operation.toPosition)
+            }
+        }
     }
 
     private fun onNewData(newData: List<Item>) {
@@ -75,7 +91,12 @@ class RecyclerActivity : AppCompatActivity() {
         private const val NUMBER_VIEW_MARGIN_DP = 4
     }
 
-    private class Adapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+    private class Adapter(
+        private val onOperationRequested: (Operation) -> Unit,
+        private val layoutManager: LinearLayoutManager
+    ) : RecyclerView.Adapter<RecyclerView.ViewHolder>(), DragAndDropTouchCallback.Adapter {
+
+        private var curComputedOperation: Operation? = null
 
         private var data: List<Item> = emptyList()
 
@@ -130,11 +151,9 @@ class RecyclerActivity : AppCompatActivity() {
         override fun getItemCount(): Int {
             return data.size
         }
-
         override fun getItemId(position: Int): Long {
             return data[position].id
         }
-
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             when (val item = data[position]) {
                 is Item.PlaceholderListItem -> {
@@ -149,10 +168,12 @@ class RecyclerActivity : AppCompatActivity() {
             }
         }
 
-        override fun getItemViewType(position: Int): Int = when (data[position]) {
-            is Item.PlaceholderListItem -> VIEW_TYPE_PLACEHOLDER
-            is Item.FolderListItem -> VIEW_TYPE_FOLDER
-            is Item.ColoredNumberListItem -> VIEW_TYPE_NUMBER
+        override fun getItemViewType(position: Int): Int {
+            return when (data[position]) {
+                is Item.PlaceholderListItem -> VIEW_TYPE_PLACEHOLDER
+                is Item.FolderListItem -> VIEW_TYPE_FOLDER
+                is Item.ColoredNumberListItem -> VIEW_TYPE_NUMBER
+            }
         }
 
         private class PlaceholderViewHolder(view: View) : RecyclerView.ViewHolder(view)
@@ -174,9 +195,16 @@ class RecyclerActivity : AppCompatActivity() {
             }
         }
 
-        private class NumberViewHolder(
-            view: ColoredNumberView
-        ) : RecyclerView.ViewHolder(view) {
+        private class NumberViewHolder(view: ColoredNumberView) : RecyclerView.ViewHolder(view), DragAndDropTouchCallback.DraggableViewHolder {
+
+            override fun onDragStateChanged(dragging: Boolean) {
+                // do nothin'
+            }
+
+            override fun canDrag(): Boolean {
+                return true
+            }
+
             fun configure(item: Item.ColoredNumberListItem) {
                 itemView as ColoredNumberView
                 itemView.configure(item.coloredNumber)
@@ -184,10 +212,83 @@ class RecyclerActivity : AppCompatActivity() {
             }
         }
 
+        override fun isValidMove(fromPosition: Int, toPosition: Int): Boolean {
+            return false
+        }
+
+        override fun onDragStarted(viewHolder: RecyclerView.ViewHolder?) {
+            // on drag started?
+        }
+
+        override fun onDrop() {
+            // on drop?
+        }
+
+        override fun onMoveTargeted(
+            recyclerView: RecyclerView,
+            source: RecyclerView.ViewHolder,
+            target: RecyclerView.ViewHolder
+        ): Boolean {
+            when (val operation = curComputedOperation) {
+               is Operation.Move -> {
+                   onOperationRequested(operation)
+                   return true
+               }
+            }
+
+            return false
+        }
+
+        private val boundingBoxRect = Rect()
+        override fun chooseDropTarget(
+            selected: RecyclerView.ViewHolder,
+            dropTargets: MutableList<RecyclerView.ViewHolder>,
+            curX: Int,
+            curY: Int
+        ): RecyclerView.ViewHolder? {
+            if (dropTargets.isEmpty()) {
+                curComputedOperation = null
+                return null
+            }
+
+            layoutManager.getTransformedBoundingBox(selected.itemView, false, boundingBoxRect)
+            val selectedCenterY = boundingBoxRect.centerY()
+            val target = dropTargets
+                .sortedBy { potentialTarget ->
+                    layoutManager.getTransformedBoundingBox(potentialTarget.itemView, false, boundingBoxRect)
+                    val potentialTargetCenterY = boundingBoxRect.centerY()
+                    Math.abs(selectedCenterY - potentialTargetCenterY)
+                }
+                .first()
+
+            // could cache this somehow and save one computation, but doesn't seem necessary...
+            layoutManager.getTransformedBoundingBox(target.itemView, false, boundingBoxRect)
+            val targetCenterY = boundingBoxRect.centerY()
+
+            if (target is NumberViewHolder) {
+                val isMovingUp = selected.adapterPosition > target.adapterPosition
+                val operation: Operation?
+                if (isMovingUp && selectedCenterY < targetCenterY) {
+                    operation = Operation.Move(selected.adapterPosition, target.adapterPosition)
+                } else if (!isMovingUp && selectedCenterY > targetCenterY) {
+                    operation = Operation.Move(selected.adapterPosition, target.adapterPosition)
+                } else {
+                    operation = null
+                }
+                curComputedOperation = operation
+            }
+
+            return target
+        }
+
         companion object {
             private const val VIEW_TYPE_PLACEHOLDER = 0
             private const val VIEW_TYPE_FOLDER = 1
             private const val VIEW_TYPE_NUMBER = 2
+        }
+
+        sealed class Operation {
+            data class Move(val fromPosition: Int, val toPosition: Int) : Operation()
         }
     }
 }

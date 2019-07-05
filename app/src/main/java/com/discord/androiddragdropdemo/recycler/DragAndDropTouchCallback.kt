@@ -69,6 +69,7 @@ class DragAndDropTouchCallback @JvmOverloads constructor(
         curX: Int,
         curY: Int
     ): RecyclerView.ViewHolder? {
+//        return super.chooseDropTarget(selected, dropTargets, curX, curY)
         return adapter.chooseDropTarget(
             selected, dropTargets, curX, curY
         )
