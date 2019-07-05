@@ -18,6 +18,7 @@ class NumberFolderView @JvmOverloads constructor(
     }
 
     private val backgroundView: View = findViewById(R.id.number_folder_background)
+    private val highlight: View = findViewById(R.id.number_folder_highlight)
 
     private var hasChildren = false
     fun setNumChildren(numChildren: Int, itemSize: Float, itemMargin: Float) {
@@ -33,6 +34,14 @@ class NumberFolderView @JvmOverloads constructor(
         } else if (numChildren > 0 && !hasChildren) {
             backgroundView.setBackgroundResource(R.drawable.rounded_rectangle_gray)
             this.hasChildren = true
+        }
+    }
+
+    fun setIsHighlighted(isHighlighted: Boolean) {
+        if (isHighlighted) {
+            highlight.visibility = View.VISIBLE
+        } else {
+            highlight.visibility = View.GONE
         }
     }
 }

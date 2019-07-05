@@ -66,6 +66,27 @@ object NumbersRepository {
         publish()
     }
 
+    fun addNumberToFolder(sourceId: Long, folderId: Long, belowId: Long?) {
+        // Find the entry representing the source.
+        val sourceIndex = entries.indexOfFirst { it is Entry.SingletonNumber && it.number.id == sourceId }
+        val source = (entries[sourceIndex] as Entry.SingletonNumber).number
+
+        // Find the entry representing the target.
+        val targetIndex = entries.indexOfFirst { it is Entry.Folder && it.id == folderId }
+        val target = (entries[targetIndex] as Entry.Folder)
+
+        // Add to the folder first.
+        val folderNumbers = ArrayList(target.numbers)
+        val insertionIndex = belowId
+            ?.let { folderNumbers.indexOfFirst { it.id == belowId } }?.plus(1) ?: 0
+        folderNumbers.add(insertionIndex, source)
+        entries[targetIndex] = target.copy(numbers = folderNumbers)
+
+        // Remove the original item.
+        entries.removeAt(sourceIndex)
+        publish()
+    }
+
     private fun publish() {
         entriesSubject.onNext(entries)
     }

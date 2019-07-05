@@ -140,6 +140,7 @@ class LinearActivity : AppCompatActivity() {
             is Item.FolderListItem -> {
                 val view = linearLayout.getChildAt(position) as NumberFolderView
                 val marginSize = dpToPx(NUMBER_VIEW_MARGIN_DP, resources)
+                view.setIsHighlighted(isHighlighted = item.isTargeted)
                 view.setNumChildren(item.numChildren, itemSize, marginSize)
                 view.setOnClickListener {
                     if (item.isOpen) {

@@ -240,19 +240,35 @@ class ListViewModel : ViewModel() {
         val targetItemIndex = targetedIndex ?: -1
 
         if (targetItemIndex > -1) {
-            val targetedItem = listItems[targetItemIndex] as Item.ColoredNumberListItem
-            val sum = draggedItemCapture.coloredNumber.number + targetedItem.coloredNumber.number
-            val sumColoredNumber = targetedItem.coloredNumber.copy(number = sum)
-            val sumListItem = targetedItem.copy(coloredNumber = sumColoredNumber, isTargeted = false)
-            editingList[targetItemIndex] = sumListItem
-            editingList.remove(Item.PlaceholderListItem)
+            when (val targetedItem = listItems[targetItemIndex]) {
+                is Item.ColoredNumberListItem -> {
+                    val sum = draggedItemCapture.coloredNumber.number + targetedItem.coloredNumber.number
+                    val sumColoredNumber = targetedItem.coloredNumber.copy(number = sum)
+                    val sumListItem = targetedItem.copy(coloredNumber = sumColoredNumber, isTargeted = false)
+                    editingList[targetItemIndex] = sumListItem
+                    editingList.remove(Item.PlaceholderListItem)
 
-            draggedItem = null
-            listItems.clear()
-            listItems.addAll(editingList)
+                    draggedItem = null
+                    listItems.clear()
+                    listItems.addAll(editingList)
 
-            publish()
-            NumbersRepository.joinNumber(draggedItemCapture.id, targetedItem.id)
+                    publish()
+                    NumbersRepository.joinNumber(draggedItemCapture.id, targetedItem.id)
+                }
+                is Item.FolderListItem -> {
+                    editingList[targetItemIndex] = targetedItem.copy(isTargeted = false)
+                    editingList.removeAll { it.id == draggedItemCapture.id }
+                    editingList.remove(Item.PlaceholderListItem)
+
+                    draggedItem = null
+                    listItems.clear()
+                    listItems.addAll(editingList)
+
+                    publish()
+                    NumbersRepository.addNumberToFolder(draggedItemCapture.id, targetedItem.id, belowId = null)
+                }
+                else -> throw IllegalStateException("invalid targeted item")
+            }
         } else {
             editingList[placeholderIndex] = draggedItem
             val belowId =
