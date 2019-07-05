@@ -1,0 +1,7 @@
+<com.discord.androiddragdropdemo.linear.ColoredNumberView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_margin="4dp"
+        tools:background="@drawable/circle_red"
+        xmlns:tools="http://schemas.android.com/tools"
+        xmlns:android="http://schemas.android.com/apk/res/android"/>
