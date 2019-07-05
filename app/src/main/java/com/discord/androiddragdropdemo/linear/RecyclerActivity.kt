@@ -16,7 +16,7 @@ import io.reactivex.disposables.Disposable
 
 class RecyclerActivity : AppCompatActivity() {
 
-    private lateinit var viewModel: ListViewModel
+    private lateinit var viewModel: RecyclerViewModel
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var recyclerAdapter: Adapter
@@ -42,7 +42,7 @@ class RecyclerActivity : AppCompatActivity() {
 
         viewModel = ViewModelProviders
             .of(this)
-            .get(ListViewModel::class.java)
+            .get(RecyclerViewModel::class.java)
 
         disposable = viewModel
             .observeListItems()
@@ -174,7 +174,9 @@ class RecyclerActivity : AppCompatActivity() {
             }
         }
 
-        private class NumberViewHolder(view: ColoredNumberView) : RecyclerView.ViewHolder(view) {
+        private class NumberViewHolder(
+            view: ColoredNumberView
+        ) : RecyclerView.ViewHolder(view) {
             fun configure(item: Item.ColoredNumberListItem) {
                 itemView as ColoredNumberView
                 itemView.configure(item.coloredNumber)
