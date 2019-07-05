@@ -131,8 +131,13 @@ class LinearActivity : AppCompatActivity() {
 
     private fun updateView(position: Int) {
         when (val item = dataSnapshot[position]) {
-            Item.PlaceholderListItem -> {
+            is Item.PlaceholderListItem -> {
                 val view = linearLayout.getChildAt(position)
+                if (item.folderId != null) {
+                    view.setBackgroundResource(R.drawable.ring_red)
+                } else {
+                    view.setBackgroundResource(R.drawable.ring_black)
+                }
                 if (view is NumberFolderView || view is ColoredNumberView) {
                     throw IllegalStateException("invalid view type: ${view.javaClass}")
                 }

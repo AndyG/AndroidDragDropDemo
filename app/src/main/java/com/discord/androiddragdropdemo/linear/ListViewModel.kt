@@ -1,6 +1,7 @@
 package com.discord.androiddragdropdemo.linear
 
 import android.util.Log
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.ViewModel
 import com.discord.androiddragdropdemo.repository.ExpandedFolderRepository
 import com.discord.androiddragdropdemo.repository.NumbersRepository
@@ -49,7 +50,7 @@ class ListViewModel : ViewModel() {
         val itemIndex = editingList.indexOfFirst { it.id == item.id }
 
         editingList.apply {
-            set(itemIndex, Item.PlaceholderListItem)
+            set(itemIndex, Item.PlaceholderListItem((item as Item.ColoredNumberListItem).folderId))
         }
 
         listItems.clear()
@@ -77,7 +78,20 @@ class ListViewModel : ViewModel() {
                 }
 
                 val targetIndex = editingList.indexOfFirst { it.id == item.id }
-                val existingPlaceholderIndex = editingList.indexOf(Item.PlaceholderListItem)
+                val existingPlaceholderIndex = editingList.indexOfFirst { it.id == Item.PLACEHOLDER_ID }
+                val targetItem = editingList[targetIndex]
+                val placeholderFolderId = when(targetItem) {
+                    is Item.ColoredNumberListItem -> targetItem.folderId // todo: allow not inserting in folder
+                    is Item.FolderListItem -> {
+                        if (targetItem.isOpen) {
+                            targetItem.id
+                        } else {
+                            null
+                        }
+                    }
+                    else -> throw IllegalStateException("wut")
+                }
+
                 editingList.removeAt(existingPlaceholderIndex)
                 // adjust for removal.
                 val adjustedTargetIndex =
@@ -85,7 +99,7 @@ class ListViewModel : ViewModel() {
                     else targetIndex
 
                 // it's a BELOW target, so add 1.
-                editingList.add(adjustedTargetIndex + 1, Item.PlaceholderListItem)
+                editingList.add(adjustedTargetIndex + 1, Item.PlaceholderListItem(placeholderFolderId))
                 listItems.clear()
                 listItems.addAll(editingList)
                 publish()
@@ -107,14 +121,21 @@ class ListViewModel : ViewModel() {
                 }
 
                 val targetIndex = editingList.indexOfFirst { it.id == item.id }
-                val existingPlaceholderIndex = editingList.indexOf(Item.PlaceholderListItem)
+                val targetItem = editingList[targetIndex]
+                val folderId = when (targetItem) {
+                    is Item.PlaceholderListItem -> throw IllegalStateException("wut")
+                    is Item.FolderListItem -> null
+                    is Item.ColoredNumberListItem -> targetItem.folderId
+                }
+
+                val existingPlaceholderIndex = editingList.indexOfFirst { it.id == Item.PLACEHOLDER_ID }
                 editingList.removeAt(existingPlaceholderIndex)
                 // adjust for removal.
                 val adjustedTargetIndex =
                     if (existingPlaceholderIndex < targetIndex) targetIndex - 1
                     else targetIndex
 
-                editingList.add(adjustedTargetIndex, Item.PlaceholderListItem)
+                editingList.add(adjustedTargetIndex, Item.PlaceholderListItem(folderId))
                 listItems.clear()
                 listItems.addAll(editingList)
                 publish()
@@ -235,7 +256,11 @@ class ListViewModel : ViewModel() {
         val draggedItemCapture = draggedItem as Item.ColoredNumberListItem
         val editingList = ArrayList(listItems)
 
-        val placeholderIndex = editingList.indexOf(Item.PlaceholderListItem)
+        val placeholderIndex = editingList.indexOfFirst { it.id == Item.PLACEHOLDER_ID }
+
+        if (placeholderIndex < 0) {
+            throw IllegalStateException("no placeholder when drag ended")
+        }
 
         val targetItemIndex = targetedIndex ?: -1
 
@@ -246,7 +271,7 @@ class ListViewModel : ViewModel() {
                     val sumColoredNumber = targetedItem.coloredNumber.copy(number = sum)
                     val sumListItem = targetedItem.copy(coloredNumber = sumColoredNumber, isTargeted = false)
                     editingList[targetItemIndex] = sumListItem
-                    editingList.remove(Item.PlaceholderListItem)
+                    editingList.removeAt(placeholderIndex)
 
                     draggedItem = null
                     listItems.clear()
@@ -258,7 +283,7 @@ class ListViewModel : ViewModel() {
                 is Item.FolderListItem -> {
                     editingList[targetItemIndex] = targetedItem.copy(isTargeted = false)
                     editingList.removeAll { it.id == draggedItemCapture.id }
-                    editingList.remove(Item.PlaceholderListItem)
+                    editingList.removeAt(placeholderIndex)
 
                     draggedItem = null
                     listItems.clear()
@@ -278,12 +303,10 @@ class ListViewModel : ViewModel() {
                 belowId = null
             } else {
                 val aboveItem = editingList[placeholderIndex - 1]
-                belowId = if (aboveItem is Item.FolderListItem) {
-                    aboveItem.id
-                } else if (aboveItem is Item.ColoredNumberListItem) {
-                    aboveItem.folderId ?: aboveItem.id
-                } else {
-                    throw IllegalArgumentException("unexpected above item")
+                belowId = when (aboveItem) {
+                    is Item.FolderListItem -> aboveItem.id
+                    is Item.ColoredNumberListItem -> aboveItem.folderId ?: aboveItem.id
+                    else -> throw IllegalArgumentException("unexpected above item")
                 }
             }
 

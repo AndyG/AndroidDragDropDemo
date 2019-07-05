@@ -4,7 +4,7 @@ import com.discord.androiddragdropdemo.domain.ColoredNumber
 
 sealed class Item(open val id: Long) {
 
-    object PlaceholderListItem : Item(-1L)
+    data class PlaceholderListItem(val folderId: Long?) : Item(PLACEHOLDER_ID)
 
     data class FolderListItem(
         val isOpen: Boolean,
@@ -15,4 +15,8 @@ sealed class Item(open val id: Long) {
     data class ColoredNumberListItem(val coloredNumber: ColoredNumber,
                                      val folderId: Long?,
                                      val isTargeted: Boolean = false) : Item(id = coloredNumber.id)
+
+    companion object {
+        const val PLACEHOLDER_ID = -1L
+    }
 }
