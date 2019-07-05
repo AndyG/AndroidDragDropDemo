@@ -15,7 +15,7 @@ class RecyclerViewModel : ViewModel() {
     private val listItems = ArrayList<Item>()
     private val listItemsSubject = BehaviorSubject.create<List<Item>>()
 
-    private var curTargetPosition: Int? = null
+    private var targetedOpenFolderId: Long? = null
 
     private val disposable: Disposable
 
@@ -42,39 +42,85 @@ class RecyclerViewModel : ViewModel() {
 
     fun move(fromPosition: Int, toPosition: Int) {
         val editingList = ArrayList(listItems)
-        untargetCurrentTarget(editingList)
-        val item = editingList.removeAt(fromPosition)
 
-        val adjustedToPosition = when {
-            fromPosition < toPosition -> toPosition - 1
-            else -> toPosition
+        fun doSimpleMove() {
+            val item = editingList.removeAt(fromPosition)
+
+            val adjustedToPosition = when {
+                fromPosition < toPosition -> toPosition - 1
+                else -> toPosition
+            }
+
+            editingList.add(adjustedToPosition, item)
         }
 
-        editingList.add(adjustedToPosition, item)
+        fun mutateFolder(newTargetedOpenFolderId: Long?) {
+            val oldTargetedOpenFolderId = this.targetedOpenFolderId
+            if (oldTargetedOpenFolderId != null) {
+                val folderItemIndex = editingList.indexOfFirst { it is Item.FolderListItem && it.id == oldTargetedOpenFolderId }
+                val folderItem = editingList[folderItemIndex] as Item.FolderListItem
+                val newFolderItem = folderItem.copy(numChildren = folderItem.numChildren - 1)
+                editingList[folderItemIndex] = newFolderItem
+            }
+
+            if (newTargetedOpenFolderId != null) {
+                val folderItemIndex =
+                    editingList.indexOfFirst { it is Item.FolderListItem && it.id == newTargetedOpenFolderId }
+                val folderItem = editingList[folderItemIndex] as Item.FolderListItem
+                val newFolderItem = folderItem.copy(numChildren = folderItem.numChildren + 1)
+                editingList[folderItemIndex] = newFolderItem
+            }
+        }
+
+        fun getTargetedOpenFolderId(): Long? =
+            if (toPosition == 0) {
+                null
+            } else {
+                val aboveItem = editingList[toPosition - 1]
+                if (aboveItem is Item.ColoredNumberListItem && aboveItem.folderId != null) {
+                    aboveItem.folderId
+                } else if (aboveItem is Item.FolderListItem && aboveItem.isOpen) {
+                    aboveItem.id
+                } else {
+                    null
+                }
+            }
+
+        val newTargetedOpenFolderId = getTargetedOpenFolderId()
+
+        if (newTargetedOpenFolderId != this.targetedOpenFolderId) {
+            mutateFolder(newTargetedOpenFolderId)
+            this.targetedOpenFolderId = newTargetedOpenFolderId
+        }
+
+        doSimpleMove()
+
         listItems.clear()
         listItems.addAll(editingList)
+
         publish()
     }
 
-    fun target(fromPosition: Int, targetPosition: Int) {
-        val editingList = ArrayList(listItems)
-        untargetCurrentTarget(editingList)
-        val targetedItem = editingList[targetPosition] as Item.ColoredNumberListItem
-        editingList[targetPosition] = targetedItem.copy(isTargeted = true)
-        curTargetPosition = targetPosition
-        listItems.clear()
-        listItems.addAll(editingList)
-        publish()
-    }
-
-    private fun untargetCurrentTarget(editingList: MutableList<Item>) {
-        val curTargetPosition = this.curTargetPosition
-        if (curTargetPosition != null) {
-            val targetedItem = editingList[curTargetPosition] as Item.ColoredNumberListItem
-            editingList[curTargetPosition] = targetedItem.copy(isTargeted = false)
-            this.curTargetPosition = null
-        }
-    }
+//
+//    fun target(fromPosition: Int, targetPosition: Int) {
+//        val editingList = ArrayList(listItems)
+//        untargetCurrentTarget(editingList)
+//        val targetedItem = editingList[targetPosition] as Item.ColoredNumberListItem
+//        editingList[targetPosition] = targetedItem.copy(isTargeted = true)
+//        curTargetPosition = targetPosition
+//        listItems.clear()
+//        listItems.addAll(editingList)
+//        publish()
+//    }
+//
+//    private fun untargetCurrentTarget(editingList: MutableList<Item>) {
+//        val curTargetPosition = this.curTargetPosition
+//        if (curTargetPosition != null) {
+//            val targetedItem = editingList[curTargetPosition] as Item.ColoredNumberListItem
+//            editingList[curTargetPosition] = targetedItem.copy(isTargeted = false)
+//            this.curTargetPosition = null
+//        }
+//    }
 
     private fun onNewData(repositoryData: RepositoryData) {
         val (numbers, expandedFolderIds) = repositoryData

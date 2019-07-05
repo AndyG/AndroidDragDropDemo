@@ -84,7 +84,8 @@ class RecyclerActivity : AppCompatActivity() {
                 viewModel.move(operation.fromPosition, operation.toPosition)
             }
             is Adapter.Operation.Target -> {
-                viewModel.target(operation.sourcePosition, operation.targetPosition)
+                // no-op for now
+//                viewModel.target(operation.sourcePosition, operation.targetPosition)
             }
         }.javaClass // force exhaustive
     }
@@ -290,22 +291,16 @@ class RecyclerActivity : AppCompatActivity() {
             val itemHeight = boundingBoxRect.height()
             val isCloseToCenter = Math.abs(selectedCenterY - targetCenterY) < (itemHeight * CENTER_THRESHOLD)
 
-            if (target is NumberViewHolder) {
-                if (isCloseToCenter) {
-                    curComputedOperation = Operation.Target(selected.adapterPosition, target.adapterPosition)
-                } else {
-                    val isMovingUp = selected.adapterPosition > target.adapterPosition
-                    val operation: Operation?
-                    if (isMovingUp && selectedCenterY < targetCenterY) {
-                        operation = Operation.Move(selected.adapterPosition, target.adapterPosition)
-                    } else if (!isMovingUp && selectedCenterY > targetCenterY) {
-                        operation = Operation.Move(selected.adapterPosition, target.adapterPosition + 1)
-                    } else {
-                        operation = null
-                    }
-                    curComputedOperation = operation
-                }
+            val isMovingUp = selected.adapterPosition > target.adapterPosition
+            val operation: Operation?
+            if (isMovingUp && selectedCenterY < targetCenterY) {
+                operation = Operation.Move(selected.adapterPosition, target.adapterPosition)
+            } else if (!isMovingUp && selectedCenterY > targetCenterY) {
+                operation = Operation.Move(selected.adapterPosition, target.adapterPosition + 1)
+            } else {
+                operation = null
             }
+            curComputedOperation = operation
 
             return target
         }
@@ -315,7 +310,7 @@ class RecyclerActivity : AppCompatActivity() {
             private const val VIEW_TYPE_FOLDER = 1
             private const val VIEW_TYPE_NUMBER = 2
 
-            private const val CENTER_THRESHOLD = 0.2f
+            private const val CENTER_THRESHOLD = 0f
         }
 
         sealed class Operation {
